@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Register - FUTB Housing</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <div class="container auth-shell">
+        <span class="eyebrow">JOIN THE COMMUNITY</span>
+        <h2>Register</h2>
+
+        <% if (typeof message !=='undefined' ) { %>
+            <p class="error">
+                <%= message %>
+            </p>
+            <% } %>
+
+                <form method="POST" action="/register">
+                    <label class="form-label" for="name">Full name</label>
+                    <input id="name" type="text" name="name" placeholder="Your full name" required>
+                    <label class="form-label" for="email">Email address</label>
+                    <input id="email" type="email" name="email" placeholder="you@example.com" required>
+                    <label class="form-label" for="password">Password</label>
+                    <input id="password" type="password" name="password" placeholder="At least 6 characters" required>
+                    <label class="form-label" for="confirmPassword">Confirm password</label>
+                    <input id="confirmPassword" type="password" name="confirmPassword" placeholder="Repeat your password" required>
+
+                    <label class="form-label" for="role">I am joining as a</label>
+                    <select id="role" name="role" required>
+                        <option value="">Select Role</option>
+                        <option value="student">Student</option>
+                        <option value="landlord">Landlord</option>
+                    </select>
+
+                    <button type="submit" class="btn">Register</button>
+                </form>
+
+                <p>Already registered? <a href="/login">Login here</a></p>
+    </div>
+</body>
+
+</html>

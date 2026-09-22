@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Properties - FUTB Housing</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container nav-inner">
+            <a class="brand" href="/"><span class="brand-mark">F</span> FUTB <em>Housing</em></a>
+            <ul>
+                <li><a href="/">Home</a></li>
+                <% if (user) { %>
+                    <li><a href="/dashboard">Dashboard</a></li>
+                    <li><a href="/logout">Logout</a></li>
+                    <% } else { %>
+                        <li><a href="/login">Login</a></li>
+                        <% } %>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-heading">
+            <div><span class="eyebrow">THE COLLECTION</span><h2><%= typeof landlordView !== 'undefined' && landlordView ? 'Your properties' : 'Find your next address' %></h2><p><%= typeof landlordView !== 'undefined' && landlordView ? 'Track every listing and its verification status.' : 'Explore comfortable places made for student life.' %></p></div>
+            <% if (user && user.role === 'landlord') { %><a href="/add-property" class="btn">Add property <span>+</span></a><% } %>
+        </div>
+
+        <div class="properties-list">
+            <% properties.forEach(property=> { %>
+                <div class="property-card">
+                    <div class="property-image"><span><%= property.location.substring(0, 1).toUpperCase() %></span><small><%= property.verificationStatus %></small></div>
+                    <div class="property-card-body"><div class="property-meta"><span><%= property.location %></span><span class="price">₦<%= property.price.toLocaleString() %><small>/month</small></span></div>
+                    <h3><%= property.title %></h3><p><%= property.description.length > 110 ? property.description.substring(0, 110) + '...' : property.description %></p>
+                    <div class="card-footer"><span class="muted"><%= property.amenities.length %> amenities</span><a href="/property/<%= property._id %>" class="text-link">View details <span>→</span></a></div></div>
+                </div>
+                <% }); %>
+        </div>
+        <% if (!properties.length) { %><div class="empty-state"><strong>No properties here yet.</strong><p>New listings will appear in this space.</p></div><% } %>
+    </div>
+</body>
+
+</html>

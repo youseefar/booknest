@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>FUTB Student Housing Rental System</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container nav-inner">
+            <a class="brand" href="/"><span class="brand-mark">F</span> FUTB <em>Housing</em></a>
+            <ul>
+                <li><a href="/properties">Browse Properties</a></li>
+                <% if (user) { %>
+                    <li><a href="/dashboard">Dashboard</a></li>
+                    <li><a href="/logout">Logout (<%= user.name %>)</a></li>
+                    <% } else { %>
+                        <li><a href="/login">Login</a></li>
+                        <li><a href="/register">Register</a></li>
+                        <% } %>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="hero container">
+        <div class="hero-copy">
+            <span class="eyebrow">STUDENT LIVING, MADE SIMPLE</span>
+            <h2>Find a place that feels like <em>home.</em></h2>
+            <p>Verified student-friendly homes around Babura, with the details you need to choose confidently.</p>
+        </div>
+        <div class="hero-actions">
+        <% if (!user) { %>
+            <a href="/properties" class="btn">Explore homes <span>→</span></a>
+            <a href="/register" class="btn btn-quiet">Create an account</a>
+            <% } else { %>
+                <a href="/properties" class="btn">Browse properties <span>→</span></a>
+                <% } %>
+        </div>
+        <div class="hero-note"><strong>01</strong> Thoughtful spaces. <strong>02</strong> Local landlords. <strong>03</strong> Better decisions.</div>
+    </main>
+</body>
+
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>
+        <%= property.title %> - FUTB Housing
+    </title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1>🏠 FUTB Housing</h1>
+            <ul>
+                <li><a href="/properties">Properties</a></li>
+                <% if (user) { %>
+                    <li><a href="/dashboard">Dashboard</a></li>
+                    <li><a href="/logout">Logout</a></li>
+                    <% } else { %>
+                        <li><a href="/login">Login</a></li>
+                        <% } %>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>
+            <%= property.title %>
+        </h2>
+
+        <div class="property-detail">
+            <p><strong>Location:</strong>
+                <%= property.location %>
+            </p>
+            <p><strong>Address:</strong>
+                <%= property.address %>
+            </p>
+            <p><strong>Price:</strong> ₦<%= property.price %>/month</p>
+            <p><strong>Description:</strong>
+                <%= property.description %>
+            </p>
+
+            <% if (property.amenities.length> 0) { %>
+                <p><strong>Amenities:</strong></p>
+                <ul>
+                    <% property.amenities.forEach(amenity=> { %>
+                        <li>
+                            <%= amenity %>
+                        </li>
+                        <% }); %>
+                </ul>
+                <% } %>
+
+                    <h3>Landlord Info</h3>
+                    <p><strong>Name:</strong>
+                        <%= property.landlordId.name %>
+                    </p>
+                    <p><strong>Phone:</strong>
+                        <%= property.landlordId.phone %>
+                    </p>
+                    <p><strong>Email:</strong>
+                        <%= property.landlordId.email %>
+                    </p>
+
+                    <% if (user && user.role==='student' ) { %>
+                        <form method="POST" action="/book-property/<%= property._id %>">
+                            <textarea name="message" placeholder="Your inquiry message..."></textarea>
+                            <button type="submit" class="btn">Submit Inquiry</button>
+                        </form>
+                        <% } else if (!user) { %>
+                            <p><a href="/login" class="btn">Login to Book</a></p>
+                            <% } %>
+        </div>
+
+        <a href="/properties">Back to Properties</a>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Add Property - FUTB Housing</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <div class="container auth-shell">
+        <span class="eyebrow">LANDLORD STUDIO</span>
+        <h2>Add a property</h2>
+        <p>Give students a clear, honest first look at their next home.</p>
+
+        <form method="POST" action="/add-property">
+            <label class="form-label" for="title">Property title</label><input id="title" type="text" name="title" placeholder="e.g. Bright two-bedroom near campus" required>
+            <label class="form-label" for="description">Description</label><textarea id="description" name="description" placeholder="What makes this place a good home?" rows="5" required></textarea>
+            <label class="form-label" for="price">Monthly price</label><input id="price" type="number" name="price" placeholder="₦ 0" required>
+            <label class="form-label" for="location">Area</label><input id="location" type="text" name="location" placeholder="Location in Babura" required>
+            <label class="form-label" for="address">Street address</label><input id="address" type="text" name="address" placeholder="Street address" required>
+            <label class="form-label" for="amenities">Amenities</label><input id="amenities" type="text" name="amenities" placeholder="WiFi, water, parking">
+
+            <button type="submit" class="btn">Add Property</button>
+        </form>
+
+        <a href="/dashboard">Back to Dashboard</a>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Login - FUTB Housing</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <div class="container auth-shell">
+        <span class="eyebrow">WELCOME BACK</span>
+        <h2>Login</h2>
+
+        <% if (typeof message !=='undefined' ) { %>
+            <p class="error">
+                <%= message %>
+            </p>
+            <% } %>
+
+                <form method="POST" action="/login">
+                    <label class="form-label" for="email">Email address</label>
+                    <input id="email" type="email" name="email" placeholder="you@example.com" required>
+                    <label class="form-label" for="password">Password</label>
+                    <input id="password" type="password" name="password" placeholder="Your password" required>
+                    <button type="submit" class="btn">Login</button>
+                </form>
+
+                <p>Don't have an account? <a href="/register">Register here</a></p>
+    </div>
+</body>
+
+</html>

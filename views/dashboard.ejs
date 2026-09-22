@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Dashboard - FUTB Housing</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container nav-inner">
+            <a class="brand" href="/"><span class="brand-mark">F</span> FUTB <em>Housing</em></a>
+            <ul>
+                <li><a href="/properties">Properties</a></li>
+                <% if (user.role==='landlord' ) { %>
+                    <li><a href="/add-property">Add Property</a></li>
+                    <li><a href="/inquiries">Inquiries</a></li>
+                    <% } else if (user.role==='student') { %>
+                    <li><a href="/my-inquiries">My Inquiries</a></li>
+                    <% } else if (user.role==='admin') { %>
+                    <li><a href="/admin">Moderation</a></li>
+                    <% } %>
+                        <li><a href="/logout">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-heading"><div><span class="eyebrow">YOUR SPACE</span><h2>Welcome back, <%= user.name.split(' ')[0] %>.</h2><p>Here is your housing activity at a glance.</p></div><span class="role-pill"><%= user.role %></span></div>
+        <div class="stats-row"><div class="stat"><small>ACCOUNT</small><strong><%= user.email %></strong></div><div class="stat"><small><%= user.role === 'landlord' ? 'LISTINGS' : 'INQUIRIES' %></small><strong><%= user.role === 'landlord' ? properties.length : bookings.length %></strong></div><div class="stat"><small>STATUS</small><strong class="status-live">Active</strong></div></div>
+
+        <% if (user.role==='landlord' ) { %>
+            <div class="section-head"><h3>Your listings</h3><a href="/add-property" class="btn">Add property <span>+</span></a></div>
+            <div class="dashboard-list"><% if (!properties.length) { %><div class="empty-state"><strong>Your first listing starts here.</strong><p>Add a property and it will appear in your inventory.</p></div><% } %><% properties.forEach(property => { %><div class="listing-row"><a class="listing-row-link" href="/property/<%= property._id %>"><span class="listing-avatar"><%= property.title.substring(0, 1).toUpperCase() %></span><span><strong><%= property.title %></strong><small><%= property.location %> · ₦<%= property.price.toLocaleString() %>/month</small></span></a><span class="badge badge-<%= property.verificationStatus %>"><%= property.verificationStatus %></span><a href="/property/<%= property._id %>/edit" class="text-link">Edit</a></div><% }) %></div>
+            <div class="section-head"><h3>Recent inquiries</h3><a href="/inquiries" class="text-link">View inbox →</a></div><div class="dashboard-list"><% if (!bookings.length) { %><div class="empty-state"><strong>No inquiries yet.</strong><p>Student interest will appear here.</p></div><% } %><% bookings.slice(0, 3).forEach(booking => { %><div class="listing-row"><span class="listing-avatar"><%= booking.studentId ? booking.studentId.name.substring(0, 1).toUpperCase() : '?' %></span><span><strong><%= booking.studentId ? booking.studentId.name : 'Student' %></strong><small><%= booking.propertyId ? booking.propertyId.title : 'Property unavailable' %></small></span><span class="badge badge-<%= booking.status %>"><%= booking.status %></span></div><% }) %></div>
+            <% } else { %>
+                <div class="student-callout"><h3>Ready to find your next home?</h3><p>Browse verified places and send an inquiry to a landlord.</p><a href="/properties" class="btn">Browse properties <span>→</span></a></div><div class="section-head"><h3>Your inquiries</h3><a href="/my-inquiries" class="text-link">View all →</a></div><div class="dashboard-list"><% if (!bookings.length) { %><div class="empty-state"><strong>You have no inquiries yet.</strong><p>When you find a place you love, start a conversation.</p></div><% } %><% bookings.slice(0, 3).forEach(booking => { %><div class="listing-row"><span class="listing-avatar">H</span><span><strong><%= booking.propertyId ? booking.propertyId.title : 'Property unavailable' %></strong><small><%= booking.propertyId ? booking.propertyId.location : '' %></small></span><span class="badge badge-<%= booking.status %>"><%= booking.status %></span></div><% }) %></div>
+                <% } %>
+    </div>
+</body>
+
+</html>
