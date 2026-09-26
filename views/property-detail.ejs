@@ -1,80 +1,117 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>
-        <%= property.title %> - FUTB Housing
-    </title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= property.title %> - FUTB Housing</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="/js/theme.js"></script>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 
-<body>
-    <nav class="navbar">
+<body class="bg-soft">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top shadow-sm">
         <div class="container">
-            <h1>🏠 FUTB Housing</h1>
-            <ul>
-                <li><a href="/properties">Properties</a></li>
+            <a class="navbar-brand brand fw-bold" href="/" aria-label="FUTB Housing home"><img class="brand-logo" src="/futb-crest.png" alt="Federal University of Technology Babura crest">FUTB <span class="text-success">Housing</span></a>
+            <div class="d-flex gap-3 align-items-center">
+                <a class="nav-link text-dark" href="/properties"><i class="bi bi-building me-1"></i>Properties</a>
                 <% if (user) { %>
-                    <li><a href="/dashboard">Dashboard</a></li>
-                    <li><a href="/logout">Logout</a></li>
-                    <% } else { %>
-                        <li><a href="/login">Login</a></li>
-                        <% } %>
-            </ul>
+                    <a class="nav-link text-dark" href="/dashboard"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>
+                    <a class="nav-link text-dark" href="/profile"><i class="bi bi-person-circle me-1"></i>Profile</a>
+                    <a class="nav-link text-dark" href="/logout"><i class="bi bi-box-arrow-right me-1"></i>Logout</a>
+                <% } else { %>
+                    <a class="nav-link text-dark" href="/login"><i class="bi bi-person-circle me-1"></i>Login</a>
+                <% } %>
+            </div>
         </div>
     </nav>
 
-    <div class="container">
-        <h2>
-            <%= property.title %>
-        </h2>
+    <main class="container py-5">
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="detail-gallery glass-card overflow-hidden">
+                    <% if (property.images && property.images.length) { %>
+                        <div id="propertyCarousel" class="carousel slide" data-bs-ride="carousel">
+                            <div class="carousel-inner">
+                                <% property.images.forEach((image, index) => { %>
+                                    <div class="carousel-item <%= index === 0 ? 'active' : '' %>">
+                                        <img src="<%= image %>" class="d-block w-100" alt="<%= property.title %>" style="height: 520px; object-fit: cover;">
+                                    </div>
+                                <% }); %>
+                            </div>
+                            <button class="carousel-control-prev" type="button" data-bs-target="#propertyCarousel" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Previous</span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#propertyCarousel" data-bs-slide="next">
+                                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Next</span>
+                            </button>
+                        </div>
+                    <% } else { %>
+                        <div class="d-flex align-items-center justify-content-center bg-gradient-rent text-white" style="height: 520px;">
+                            <i class="bi bi-house-heart display-1"></i>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
 
-        <div class="property-detail">
-            <p><strong>Location:</strong>
-                <%= property.location %>
-            </p>
-            <p><strong>Address:</strong>
-                <%= property.address %>
-            </p>
-            <p><strong>Price:</strong> ₦<%= property.price %>/month</p>
-            <p><strong>Description:</strong>
-                <%= property.description %>
-            </p>
+            <div class="col-lg-5">
+                <div class="glass-card p-4 h-100">
+                    <span class="eyebrow text-uppercase"><%= property.status === 'rented' ? 'Booked home' : 'Verified rental' %></span>
+                    <h1 class="h2 fw-bold mb-3"><%= property.title %></h1>
+                    <div class="d-flex align-items-center gap-3 mb-3 text-success fw-semibold">
+                        <span><i class="bi bi-geo-alt-fill me-1"></i><%= property.location %></span>
+                        <span class="badge text-bg-success-subtle text-success"><%= property.status %></span>
+                    </div>
+                    <div class="fs-4 fw-bold text-dark mb-3">₦<%= property.price.toLocaleString() %><span class="text-muted fs-6">/month</span></div>
+                    <p class="text-muted"><%= property.description %></p>
 
-            <% if (property.amenities.length> 0) { %>
-                <p><strong>Amenities:</strong></p>
-                <ul>
-                    <% property.amenities.forEach(amenity=> { %>
-                        <li>
-                            <%= amenity %>
-                        </li>
-                        <% }); %>
-                </ul>
-                <% } %>
+                    <div class="row g-2 mb-4">
+                        <div class="col-6"><div class="info-pill"><i class="bi bi-pin-map-fill me-2"></i><%= property.address %></div></div>
+                        <div class="col-6"><div class="info-pill"><i class="bi bi-star-fill me-2"></i><%= property.amenities && property.amenities.length ? property.amenities.length : 0 %> amenities</div></div>
+                    </div>
 
-                    <h3>Landlord Info</h3>
-                    <p><strong>Name:</strong>
-                        <%= property.landlordId.name %>
-                    </p>
-                    <p><strong>Phone:</strong>
-                        <%= property.landlordId.phone %>
-                    </p>
-                    <p><strong>Email:</strong>
-                        <%= property.landlordId.email %>
-                    </p>
+                    <% if (property.amenities && property.amenities.length) { %>
+                        <div class="mb-4">
+                            <h3 class="h5 fw-bold mb-3">Included amenities</h3>
+                            <div class="d-flex flex-wrap gap-2">
+                                <% property.amenities.forEach(amenity => { %>
+                                    <span class="amenity-badge"><i class="bi bi-check-circle-fill me-1"></i><%= amenity %></span>
+                                <% }); %>
+                            </div>
+                        </div>
+                    <% } %>
 
-                    <% if (user && user.role==='student' ) { %>
-                        <form method="POST" action="/book-property/<%= property._id %>">
-                            <textarea name="message" placeholder="Your inquiry message..."></textarea>
-                            <button type="submit" class="btn">Submit Inquiry</button>
+                    <div class="border-top pt-4 mb-3">
+                        <h3 class="h5 fw-bold mb-2">Landlord info</h3>
+                        <p class="mb-1"><i class="bi bi-person-fill me-2"></i><strong><%= property.landlordId.name %></strong></p>
+                        <p class="mb-1"><i class="bi bi-telephone-fill me-2"></i><%= property.landlordId.phone || 'Phone number not provided' %></p>
+                        <p class="mb-0"><i class="bi bi-envelope-fill me-2"></i><%= property.landlordId.email %></p>
+                    </div>
+
+                    <% if (property.status === 'rented') { %>
+                        <button type="button" class="btn btn-secondary btn-lg w-100 mt-3" disabled><i class="bi bi-check-circle me-2"></i>Booked</button>
+                    <% } else if (user && user.role === 'student' && property.status === 'available' && property.verificationStatus === 'verified') { %>
+                        <form method="POST" action="/payments/properties/<%= property._id %>/initialize" class="mt-3">
+                            <button type="submit" class="btn btn-primary btn-lg w-100"><i class="bi bi-credit-card me-2"></i>Pay ₦<%= property.price.toLocaleString() %> with Paystack</button>
+                            <p class="small text-muted text-center mt-2 mb-0">Secure test-mode checkout · listed monthly price</p>
                         </form>
-                        <% } else if (!user) { %>
-                            <p><a href="/login" class="btn">Login to Book</a></p>
-                            <% } %>
+                    <% } else if (!user) { %>
+                        <a href="/login?returnTo=%2Fproperty%2F<%= property._id %>" class="btn btn-primary w-100"><i class="bi bi-box-arrow-in-right me-2"></i>Sign in to book this home</a>
+                        <p class="small text-muted text-center mt-2 mb-0">New here? Your home will be waiting after you create an account.</p>
+                    <% } %>
+                </div>
+            </div>
         </div>
 
-        <a href="/properties">Back to Properties</a>
-    </div>
-</body>
+        <div class="mt-4">
+            <a href="/properties" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-2"></i>Back to properties</a>
+        </div>
+    </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
 </html>

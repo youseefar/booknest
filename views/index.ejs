@@ -1,44 +1,156 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>FUTB Student Housing Rental System</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FUTB Housing — Find Your Next Home</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="/js/theme.js"></script>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 
-<body>
-    <nav class="navbar">
-        <div class="container nav-inner">
-            <a class="brand" href="/"><span class="brand-mark">F</span> FUTB <em>Housing</em></a>
-            <ul>
-                <li><a href="/properties">Browse Properties</a></li>
+<body class="bg-soft">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand brand fw-bold" href="/" aria-label="FUTB Housing home"><img class="brand-logo" src="/futb-crest.png" alt="Federal University of Technology Babura crest">FUTB <span class="text-success">Housing</span></a>
+            <div class="d-flex gap-3 align-items-center">
+                <a class="nav-link text-dark" href="/properties"><i class="bi bi-buildings me-1"></i>Browse homes</a>
                 <% if (user) { %>
-                    <li><a href="/dashboard">Dashboard</a></li>
-                    <li><a href="/logout">Logout (<%= user.name %>)</a></li>
-                    <% } else { %>
-                        <li><a href="/login">Login</a></li>
-                        <li><a href="/register">Register</a></li>
-                        <% } %>
-            </ul>
+                    <a class="nav-link text-dark" href="/dashboard"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>
+                    <a class="nav-link text-dark" href="/profile"><i class="bi bi-person-circle me-1"></i>Profile</a>
+                    <a class="nav-link text-dark" href="/logout"><i class="bi bi-box-arrow-right me-1"></i>Logout (<%= user.name %>)</a>
+                <% } else { %>
+                    <a class="nav-link text-dark" href="/login"><i class="bi bi-person-circle me-1"></i>Login</a>
+                    <a class="nav-link text-dark" href="/register"><i class="bi bi-person-plus me-1"></i>Register</a>
+                <% } %>
+            </div>
         </div>
     </nav>
 
-    <main class="hero container">
-        <div class="hero-copy">
-            <span class="eyebrow">STUDENT LIVING, MADE SIMPLE</span>
-            <h2>Find a place that feels like <em>home.</em></h2>
-            <p>Verified student-friendly homes around Babura, with the details you need to choose confidently.</p>
-        </div>
-        <div class="hero-actions">
-        <% if (!user) { %>
-            <a href="/properties" class="btn">Explore homes <span>→</span></a>
-            <a href="/register" class="btn btn-quiet">Create an account</a>
-            <% } else { %>
-                <a href="/properties" class="btn">Browse properties <span>→</span></a>
-                <% } %>
-        </div>
-        <div class="hero-note"><strong>01</strong> Thoughtful spaces. <strong>02</strong> Local landlords. <strong>03</strong> Better decisions.</div>
-    </main>
-</body>
+    <main class="container home-landing py-4">
+        <section class="airbnb-hero">
+            <form class="airbnb-search-box home-search-form" method="GET" action="/properties">
+                <label for="home-search">Find a place near FUTB</label>
+                <div class="home-search-controls">
+                    <span class="home-search-icon" aria-hidden="true"><i class="bi bi-geo-alt"></i></span>
+                    <input id="home-search" class="form-control" type="search" name="q" placeholder="Search by area, address, or property name">
+                    <button class="btn btn-primary btn-search" type="submit"><i class="bi bi-search me-2"></i>Search homes</button>
+                </div>
+            </form>
 
+            <div class="airbnb-hero-copy">
+                <span class="eyebrow text-uppercase">FUTB rental marketplace</span>
+                <div class="home-wordmark" aria-label="FUTB Housing">
+                    <span class="home-wordmark-bird home-wordmark-bird-one" aria-hidden="true"><i class="bi bi-twitter"></i></span>
+                    <span class="home-wordmark-bird home-wordmark-bird-two" aria-hidden="true"><i class="bi bi-twitter"></i></span>
+                    <h1><span>FUTB</span><span class="wordmark-housing">Housing</span></h1>
+                </div>
+                <h2 class="home-hero-heading">A better place to call home.</h2>
+                <p>Discover clean, verified student-friendly homes near campus, from private rooms to full apartments with modern essentials.</p>
+                <div class="airbnb-cta">
+                    <a href="/properties" class="btn btn-primary btn-lg"><i class="bi bi-search me-2"></i>Explore homes</a>
+                    <% if (!user) { %>
+                        <a href="/register/landlord" class="btn btn-outline-dark btn-lg">List your property</a>
+                    <% } else if (user.role === 'landlord') { %>
+                        <a href="/add-property" class="btn btn-outline-dark btn-lg">Add a listing</a>
+                    <% } else { %>
+                        <a href="/properties" class="btn btn-outline-dark btn-lg">See all rentals</a>
+                    <% } %>
+                </div>
+            </div>
+        </section>
+
+        <section class="airbnb-trust mt-4">
+            <div class="trust-item"><i class="bi bi-shield-check"></i><span>Verified homes</span></div>
+            <div class="trust-item"><i class="bi bi-map"></i><span>Near campus</span></div>
+            <div class="trust-item"><i class="bi bi-star-fill"></i><span>Top-rated landlords</span></div>
+            <div class="trust-item"><i class="bi bi-clock-history"></i><span>Fast response</span></div>
+        </section>
+
+        <section class="showcase-section">
+            <div class="section-title-row">
+                <div>
+                    <span class="eyebrow text-uppercase">Featured homes</span>
+                    <h2>Popular places for students</h2>
+                    <p class="section-subtitle">Fresh listings, comfortable spaces, and a better way to settle in.</p>
+                </div>
+                <a href="/properties" class="show-all-link">See all homes <i class="bi bi-arrow-right"></i></a>
+            </div>
+
+            <div class="row g-4">
+                <% if (properties && properties.length) { %>
+                    <% properties.forEach(property => { %>
+                        <div class="col-md-6 col-xl-4">
+                            <a href="<%= property.isPlaceholder ? '/properties' : '/property/' + property._id %>" class="property-link-card">
+                                <article class="airbnb-card">
+                                    <div class="airbnb-image-wrap">
+                                        <% if (property.images && property.images.length) { %>
+                                            <img src="<%= property.images[0] %>" alt="<%= property.title %>">
+                                        <% } else { %>
+                                            <div class="airbnb-placeholder">
+                                                <i class="bi bi-house-heart"></i>
+                                            </div>
+                                        <% } %>
+                                        <% if (property.isPlaceholder) { %>
+                                            <span class="sample-home-badge"><i class="bi bi-stars me-1"></i>Sample home</span>
+                                        <% } %>
+                                        <% if (!property.isPlaceholder && property._id) { %>
+                                        <button type="button" class="wish-btn" data-property-id="<%= property._id %>" data-property-title="<%= property.title %>" aria-label="Save <%= property.title %> to wishlist" aria-pressed="false">
+                                            <i class="bi bi-heart"></i>
+                                        </button>
+                                        <% } %>
+                                    </div>
+                                    <div class="airbnb-card-body">
+                                        <div class="d-flex justify-content-between align-items-start gap-2">
+                                            <div>
+                                                <h3><%= property.title %></h3>
+                                                <p class="location-line"><i class="bi bi-geo-alt-fill me-1"></i><%= property.location %></p>
+                                            </div>
+                                            <div class="price-tag">₦<%= property.price.toLocaleString() %><span>/month</span></div>
+                                        </div>
+                                        <div class="airbnb-meta">
+                                            <span><i class="bi bi-bed"></i> 2 beds</span>
+                                            <span><i class="bi bi-bath"></i> 2 baths</span>
+                                            <span><i class="bi bi-house"></i> Private</span>
+                                        </div>
+                                    </div>
+                                </article>
+                            </a>
+                        </div>
+                    <% }); %>
+                <% } else { %>
+                    <div class="col-12">
+                        <div class="empty-state large-empty">
+                            <strong>No rental homes are available yet.</strong>
+                            <p>New student-friendly listings will appear here as soon as landlords add them.</p>
+                        </div>
+                    </div>
+                <% } %>
+            </div>
+        </section>
+    </main>
+
+    <script src="/js/wishlist.js"></script>
+
+    <footer class="home-footer">
+        <div class="container home-footer-inner">
+            <a class="home-footer-brand" href="/" aria-label="FUTB Housing home">
+                <img class="brand-logo" src="/futb-crest.png" alt="Federal University of Technology Babura crest"><span>FUTB <strong>Housing</strong></span>
+            </a>
+            <p>Find a place to settle in, study, and feel at home.</p>
+            <nav class="home-footer-links" aria-label="Footer navigation">
+                <a href="/properties">Browse homes</a>
+                <% if (!user) { %>
+                    <a href="/register/landlord">List a property</a>
+                    <a href="/login">Sign in</a>
+                <% } else { %>
+                    <a href="/dashboard">Dashboard</a>
+                <% } %>
+            </nav>
+            <span class="home-footer-copy">&copy; <%= new Date().getFullYear() %> FUTB Housing</span>
+        </div>
+    </footer>
+</body>
 </html>
