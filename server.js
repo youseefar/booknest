@@ -64,6 +64,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.set('view engine', 'ejs');
 
+app.get('/health', (req, res) => {
+  const databaseConnected = mongoose.connection.readyState === 1;
+  return res.status(databaseConnected ? 200 : 503).json({
+    status: databaseConnected ? 'ok' : 'unavailable',
+    database: databaseConnected ? 'connected' : 'disconnected'
+  });
+});
+
 const requestLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 300,
