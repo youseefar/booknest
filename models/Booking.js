@@ -37,6 +37,10 @@ const bookingSchema = new mongoose.Schema({
         min: 0,
         default: null
     },
+    paymentSubaccountCode: {
+        type: String,
+        default: null
+    },
     paymentAuthorizationUrl: {
         type: String,
         default: null

@@ -75,14 +75,20 @@ router.get('/property/:id', async (req, res) => {
         if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found');
         await Booking.syncExpiredSubscriptions();
         const property = await Property.findById(req.params.id)
-            .populate('landlordId', 'name phone email');
+            .populate('landlordId', 'name phone email payoutSubaccountCode payoutSubaccountMode');
 
         if (!property) return res.status(404).send('Property not found');
         const canView = property.verificationStatus === 'verified' && ['available', 'rented'].includes(property.status)
             || req.user?.role === 'admin'
             || property.landlordId?._id.equals(req.user?._id);
         if (!canView) return res.status(404).send('Property not found');
-        res.render('property-detail', { property, user: req.user });
+        res.render('property-detail', {
+            property,
+            user: req.user,
+            paystackMode: req.app.locals.paystackMode,
+            paystackReady: Boolean(property.landlordId?.payoutSubaccountCode)
+                && property.landlordId.payoutSubaccountMode === req.app.locals.paystackMode
+        });
     } catch (err) {
         res.status(500).send(err.message);
     }

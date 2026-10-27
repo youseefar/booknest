@@ -32,6 +32,31 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    payoutSubaccountCode: {
+        type: String,
+        default: null
+    },
+    payoutSubaccountMode: {
+        type: String,
+        enum: ['test', 'live'],
+        default: null
+    },
+    payoutBankCode: {
+        type: String,
+        default: ''
+    },
+    payoutBankName: {
+        type: String,
+        default: ''
+    },
+    payoutAccountName: {
+        type: String,
+        default: ''
+    },
+    payoutAccountLast4: {
+        type: String,
+        default: ''
+    },
 }, { timestamps: true });
 
 // Hash password before saving

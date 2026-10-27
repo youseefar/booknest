@@ -25,16 +25,15 @@ router.get('/register', (req, res) => {
 
 // Landlord Register Page
 router.get('/register/landlord', (req, res) => {
-  res.render('register', {
-    mode: 'landlord',
+  res.render('register-landlord', {
     role: 'landlord',
-      pageTitle: 'Landlord Registration',
-      returnTo: getPropertyReturnPath(req.query.returnTo)
+    pageTitle: 'Landlord Registration',
+    returnTo: getPropertyReturnPath(req.query.returnTo)
   });
 });
 
 // Register Post
-router.post('/register', async (req, res) => {
+router.post('/register', async (req, res, next) => {
   try {
     const nameValue = String(req.body.name || '').trim();
     const emailValue = String(req.body.email || '').trim().toLowerCase();
@@ -46,9 +45,10 @@ router.post('/register', async (req, res) => {
     if (!['student', 'landlord'].includes(role)) {
       role = 'student';
     }
+    const registrationView = role === 'landlord' ? 'register-landlord' : 'register';
 
     if (nameValue.length < 2 || !emailValue.includes('@') || String(password || '').length < 6 || (role === 'landlord' && phoneValue.length < 7)) {
-      return res.status(400).render('register', {
+      return res.status(400).render(registrationView, {
         message: role === 'landlord'
           ? 'Please provide a valid name, email, password, and phone number.'
           : 'Please provide a valid name, email, and password.',
@@ -60,7 +60,7 @@ router.post('/register', async (req, res) => {
     }
 
     if (password !== confirmPassword) {
-      return res.status(400).render('register', {
+      return res.status(400).render(registrationView, {
         message: 'Passwords do not match',
         mode: role === 'landlord' ? 'landlord' : 'student',
         role,
@@ -71,7 +71,7 @@ router.post('/register', async (req, res) => {
 
     const userExists = await User.findOne({ email: emailValue });
     if (userExists) {
-      return res.status(400).render('register', {
+      return res.status(400).render(registrationView, {
         message: 'Email already registered',
         mode: role === 'landlord' ? 'landlord' : 'student',
         role,
@@ -89,11 +89,18 @@ router.post('/register', async (req, res) => {
     });
 
     await newUser.save();
-    res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
+    if (role === 'landlord') {
+      return req.logIn(newUser, loginError => {
+        if (loginError) return next(loginError);
+        return res.redirect('/profile?setup=payout');
+      });
+    }
+
+    return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
   } catch (err) {
     const fallbackRole = String(req.body.role || 'student').trim();
     const role = ['student', 'landlord'].includes(fallbackRole) ? fallbackRole : 'student';
-    res.status(500).render('register', {
+    res.status(500).render(role === 'landlord' ? 'register-landlord' : 'register', {
       message: err.message,
       mode: role === 'landlord' ? 'landlord' : 'student',
       role,
@@ -165,7 +172,7 @@ router.post('/reset-password/:token', async (req, res) => {
 
 // Profile page
 router.get('/profile', requireAuth, (req, res) => {
-  res.render('profile', { user: req.user });
+  res.render('profile', { user: req.user, payoutSetup: req.query.setup === 'payout' });
 });
 
 // Update profile details

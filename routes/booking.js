@@ -18,14 +18,21 @@ const renderBookings = async (req, res, landlordView) => {
                 .populate('studentId', 'name email phone')
                 .populate('propertyId', 'title location price')
                 .sort({ timestamp: -1 });
-            res.render('bookings', { inquiries: bookings, user: req.user, landlordView: true, bookings, paymentResult: req.query.payment });
+                res.render('bookings', { inquiries: bookings, user: req.user, landlordView: true, bookings, paymentResult: req.query.payment, receiptReference: '' });
             return;
         }
 
         const bookings = await Booking.find({ studentId: req.user._id })
             .populate({ path: 'propertyId', populate: { path: 'landlordId', select: 'name email phone' } })
             .sort({ timestamp: -1 });
-        res.render('bookings', { inquiries: bookings, user: req.user, landlordView: false, bookings, paymentResult: req.query.payment });
+        res.render('bookings', {
+            inquiries: bookings,
+            user: req.user,
+            landlordView: false,
+            bookings,
+            paymentResult: req.query.payment,
+            receiptReference: String(req.query.reference || '').slice(0, 100)
+        });
     } catch (err) {
         res.status(500).send(landlordView ? 'Unable to load bookings.' : 'Unable to load your bookings.');
     }

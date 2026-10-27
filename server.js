@@ -15,6 +15,7 @@ const propertyRoutes = require('./routes/property');
 const bookingRoutes = require('./routes/booking');
 const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payments');
+const legalRoutes = require('./routes/legal');
 const User = require('./models/User');
 const bcryptjs = require('bcryptjs');
 
@@ -22,6 +23,11 @@ console.log('🔍 Environment variables loaded');
 console.log('📍 MongoDB URI:', process.env.MONGODB_URI ? 'Loaded' : 'NOT FOUND');
 
 const app = express();
+const configuredPaystackMode = String(process.env.PAYSTACK_MODE || '').trim().toLowerCase();
+app.locals.paystackMode = ['test', 'live'].includes(configuredPaystackMode)
+  ? configuredPaystackMode
+  : process.env.NODE_ENV === 'production' ? 'live' : 'test';
+console.log('💳 Paystack mode:', app.locals.paystackMode);
 mongoose.set('bufferCommands', false);
 app.set('trust proxy', 1);
 
@@ -117,7 +123,7 @@ function enableMongoSessionStore() {
 app.use((req, res, next) => {
   if (mongoose.connection.readyState === 1) return next();
 
-  const publicFallbackPaths = new Set(['/','/login','/register','/register/landlord','/forgot-password']);
+  const publicFallbackPaths = new Set(['/','/login','/register','/register/landlord','/forgot-password','/terms','/privacy-policy']);
   const canRenderWithoutDatabase = req.method === 'GET'
     && (publicFallbackPaths.has(req.path) || req.path.startsWith('/reset-password/'));
 
@@ -127,7 +133,15 @@ app.use((req, res, next) => {
     return next();
   }
 
-  return res.status(503).type('text/plain').send('The database is temporarily unavailable. Please try again shortly.');
+  return res.status(503).render('error', {
+    statusCode: 503,
+    title: 'We are reconnecting',
+    message: 'Your account is safe, but sign-in is temporarily unavailable.',
+    detail: 'Please try again in a moment, or return to the home page.',
+    backUrl: '/',
+    backLabel: 'Back to home',
+    user: null
+  });
 });
 
 app.use((req, res, next) => {
@@ -145,6 +159,7 @@ app.use('/', propertyRoutes);
 app.use('/', bookingRoutes);
 app.use('/', adminRoutes);
 app.use('/', paymentRoutes);
+app.use('/', legalRoutes);
 
 // Home page
 app.get('/', async (req, res) => {
@@ -162,6 +177,64 @@ app.get('/', async (req, res) => {
   }
 
   res.render('index', { user: req.user, properties });
+});
+
+app.use((req, res, next) => {
+  const error = new Error('Page not found.');
+  error.status = 404;
+  next(error);
+});
+
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+
+  let statusCode = Number(error.status || error.statusCode) || 500;
+  let title = statusCode === 404 ? 'We could not find that page' : 'Something went wrong';
+  let message = statusCode === 404
+    ? 'That page may have moved, or the address may be incorrect.'
+    : 'We could not complete your request right now. Please try again.';
+  let detail = 'Your information is safe. You can return to the previous page or go back home.';
+  let backUrl = '/';
+  let backLabel = 'Back to home';
+  const isAddPropertyRequest = req.path === '/add-property';
+  const isEditPropertyRequest = /^\/property\/[a-f\d]{24}\/edit$/i.test(req.path);
+
+  if (error.code === 'LIMIT_UNEXPECTED_FILE' || error.code === 'LIMIT_FILE_COUNT') {
+    statusCode = 400;
+    title = 'Choose fewer photos';
+    message = 'You can upload up to five photos for each property.';
+    detail = 'Remove extra photos from your selection, then try again.';
+  } else if (error.code === 'LIMIT_FILE_SIZE') {
+    statusCode = 400;
+    title = 'That photo is too large';
+    message = 'Each photo must be 5 MB or smaller.';
+    detail = 'Choose a smaller image, then try uploading again.';
+  } else if (error.message === 'Only JPG, PNG, or WEBP images are allowed.') {
+    statusCode = 400;
+    title = 'Choose a supported image';
+    message = 'Property photos must be JPG, PNG, or WEBP files.';
+    detail = 'Choose an image in one of those formats, then try again.';
+  }
+
+  if (isAddPropertyRequest || isEditPropertyRequest) {
+    backUrl = isEditPropertyRequest ? req.path : '/add-property';
+    backLabel = 'Return to your listing';
+  } else if (req.user) {
+    backUrl = '/dashboard';
+    backLabel = 'Back to dashboard';
+  }
+
+  if (statusCode >= 500) console.error('Request failed:', error);
+
+  return res.status(statusCode).render('error', {
+    statusCode,
+    title,
+    message,
+    detail,
+    backUrl,
+    backLabel,
+    user: req.user || null
+  });
 });
 
 const PORT = process.env.PORT || 5000;
