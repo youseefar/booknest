@@ -22,11 +22,6 @@ function uploadPropertyVideo(buffer) {
                     secure: true,
                     transformation: [{ quality: 'auto', fetch_format: 'auto', width: 1920, crop: 'limit' }]
                 }),
-                videoStreamUrl: cloudinary.url(`${result.public_id}.m3u8`, {
-                    resource_type: 'video',
-                    secure: true,
-                    streaming_profile: 'auto:maxres_1080p'
-                }),
                 videoPosterUrl: cloudinary.url(result.public_id, {
                     resource_type: 'video',
                     format: 'jpg',

@@ -137,7 +137,6 @@ router.post('/add-property', requireRole('landlord'), videoUpload, async (req, r
             address: cleanAddress,
             amenities: String(amenities || '').split(',').map(a => a.trim()).filter(Boolean),
             videoUrl: uploadedVideo?.videoUrl || '',
-            videoStreamUrl: uploadedVideo?.videoStreamUrl || '',
             videoPosterUrl: uploadedVideo?.videoPosterUrl || '',
             landlordId: req.user._id
         });
@@ -171,12 +170,11 @@ router.post('/property/:id/edit', requireRole('landlord'), videoUpload, async (r
 
         const uploadedVideo = req.file ? await uploadPropertyVideo(req.file.buffer) : null;
         const videoUrl = uploadedVideo?.videoUrl || existingProperty.videoUrl;
-        const videoStreamUrl = uploadedVideo?.videoStreamUrl || existingProperty.videoStreamUrl;
         const videoPosterUrl = uploadedVideo?.videoPosterUrl || existingProperty.videoPosterUrl;
 
         const property = await Property.findOneAndUpdate(
             { _id: req.params.id, landlordId: req.user._id },
-            { title: title.trim(), description: description.trim(), price: numericPrice, location: location.trim(), address: address.trim(), amenities: String(amenities || '').split(',').map(a => a.trim()).filter(Boolean), videoUrl, videoStreamUrl, videoPosterUrl, verificationStatus: 'pending' },
+            { title: title.trim(), description: description.trim(), price: numericPrice, location: location.trim(), address: address.trim(), amenities: String(amenities || '').split(',').map(a => a.trim()).filter(Boolean), videoUrl, videoPosterUrl, verificationStatus: 'pending' },
             { new: true, runValidators: true }
         );
         if (!property) return res.status(404).send('Property not found');

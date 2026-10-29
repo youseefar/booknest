@@ -31,10 +31,6 @@ const propertySchema = new mongoose.Schema({
         type: String,
         default: ''
     },
-    videoStreamUrl: {
-        type: String,
-        default: ''
-    },
     videoPosterUrl: {
         type: String,
         default: ''

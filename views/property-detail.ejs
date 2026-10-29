@@ -34,11 +34,10 @@
             <div class="col-lg-7">
                 <div class="detail-gallery glass-card overflow-hidden">
                     <% if (property.videoUrl) { %>
-                        <div class="adaptive-property-video" data-adaptive-video data-stream-url="<%= property.videoStreamUrl || '' %>" data-fallback-url="<%= property.videoUrl %>">
-                            <video class="property-video w-100" preload="none" playsinline poster="<%= property.videoPosterUrl || '' %>" aria-label="<%= property.title %> video"></video>
-                            <button class="property-video-start btn btn-light" type="button" data-video-start><i class="bi bi-play-fill me-1"></i>Play property video</button>
-                            <p class="property-video-status small mb-0" data-video-status role="status" aria-live="polite"></p>
-                        </div>
+                        <video class="property-video w-100" controls preload="none" playsinline poster="<%= property.videoPosterUrl || '' %>" aria-label="<%= property.title %> video">
+                            <source src="<%= property.videoUrl %>">
+                            Your browser does not support video playback.
+                        </video>
                     <% } else if (property.images && property.images.length) { %>
                         <div id="propertyCarousel" class="carousel slide" data-bs-ride="carousel">
                             <div class="carousel-inner">
@@ -172,7 +171,6 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/adaptive-video.js" defer></script>
     <%- include('partials/legal-footer') %>
 </body>
 </html>

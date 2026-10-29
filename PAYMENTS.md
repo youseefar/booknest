@@ -29,7 +29,7 @@ The admin dashboard reads the platform's available NGN balance from Paystack. Th
 
 ## Property videos
 
-Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` in the host environment. New property videos are uploaded to Cloudinary; MongoDB stores an optimized progressive fallback, an HLS adaptive-streaming URL, and a 640x360 poster URL. Listing cards load only the poster, and video playback starts only after a visitor presses play. HLS automatically switches quality based on bandwidth up to 1080p; browsers that report Data Saver are capped at 360p. Older browsers use the optimized progressive fallback. Uploads accept one MP4, MOV, or WEBM video up to 50 MB. Existing photo-backed listings remain viewable.
+Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` in the host environment. New property videos are uploaded to Cloudinary; MongoDB stores the optimized video URL and a 640x360 poster URL. Listing cards load only the poster, and the native video player requests video data only after a visitor presses play. Cloudinary automatically selects a delivery format and compression quality. Uploads accept one MP4, MOV, or WEBM video up to 50 MB. Existing photo-backed listings remain viewable.
 
 ## Test before launch
 
