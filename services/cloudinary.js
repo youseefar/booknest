@@ -16,7 +16,24 @@ function uploadPropertyVideo(buffer) {
         }, (error, result) => {
             if (error) return reject(error);
             if (!result?.secure_url) return reject(new Error('Cloudinary did not return a video URL.'));
-            return resolve(result.secure_url);
+            return resolve({
+                videoUrl: cloudinary.url(result.public_id, {
+                    resource_type: 'video',
+                    secure: true,
+                    transformation: [{ quality: 'auto', fetch_format: 'auto', width: 1920, crop: 'limit' }]
+                }),
+                videoStreamUrl: cloudinary.url(`${result.public_id}.m3u8`, {
+                    resource_type: 'video',
+                    secure: true,
+                    streaming_profile: 'auto:maxres_1080p'
+                }),
+                videoPosterUrl: cloudinary.url(result.public_id, {
+                    resource_type: 'video',
+                    format: 'jpg',
+                    secure: true,
+                    transformation: [{ width: 640, height: 360, crop: 'fill', quality: 'auto:eco' }]
+                })
+            });
         }).end(buffer);
     });
 }

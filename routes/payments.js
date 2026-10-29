@@ -186,7 +186,7 @@ router.post('/payments/admin/withdraw', requireRole('admin'), async (req, res) =
                 source: 'balance',
                 amount: amountKobo,
                 recipient: req.user.payoutRecipientCode,
-                reason: 'FUTB Housing platform withdrawal',
+                reason: 'JacobRent platform withdrawal',
                 reference
             })
         });

@@ -244,7 +244,7 @@ router.get('/dashboard', (req, res) => {
 
   return Booking.syncExpiredSubscriptions()
     .then(() => Booking.find({ studentId: req.user._id })
-      .populate('propertyId', 'title location price images videoUrl status')
+      .populate('propertyId', 'title location price images videoUrl videoPosterUrl status')
       .sort({ timestamp: -1 }))
     .then(bookings => res.render('dashboard', { user: req.user, properties: [], bookings, bookingResult: req.query.booking }))
     .catch(err => res.status(500).send(err.message));

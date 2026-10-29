@@ -14,7 +14,7 @@
         pageLoader.setAttribute('aria-live', 'polite');
         pageLoader.innerHTML = `
             <div class="page-loader-content">
-                <span class="page-loader-brand">FUTB <strong>Housing</strong></span>
+                <span class="page-loader-brand">JacobRent</span>
                 <p>Getting your page ready</p>
                 <div class="page-loader-progress" aria-hidden="true"><span></span></div>
             </div>`;

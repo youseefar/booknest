@@ -127,7 +127,7 @@ router.post('/add-property', requireRole('landlord'), videoUpload, async (req, r
         if (!cleanTitle || !cleanDescription || !cleanLocation || !cleanAddress || !Number.isFinite(numericPrice) || numericPrice <= 0) {
             return res.status(400).render('add-property', { user: req.user, message: 'Please complete every field with valid information.' });
         }
-        const videoUrl = req.file ? await uploadPropertyVideo(req.file.buffer) : '';
+        const uploadedVideo = req.file ? await uploadPropertyVideo(req.file.buffer) : null;
 
         const newProperty = new Property({
             title: cleanTitle,
@@ -136,7 +136,9 @@ router.post('/add-property', requireRole('landlord'), videoUpload, async (req, r
             location: cleanLocation,
             address: cleanAddress,
             amenities: String(amenities || '').split(',').map(a => a.trim()).filter(Boolean),
-            videoUrl,
+            videoUrl: uploadedVideo?.videoUrl || '',
+            videoStreamUrl: uploadedVideo?.videoStreamUrl || '',
+            videoPosterUrl: uploadedVideo?.videoPosterUrl || '',
             landlordId: req.user._id
         });
 
@@ -167,11 +169,14 @@ router.post('/property/:id/edit', requireRole('landlord'), videoUpload, async (r
         const existingProperty = await Property.findOne({ _id: req.params.id, landlordId: req.user._id });
         if (!existingProperty) return res.status(404).send('Property not found');
 
-        const videoUrl = req.file ? await uploadPropertyVideo(req.file.buffer) : existingProperty.videoUrl;
+        const uploadedVideo = req.file ? await uploadPropertyVideo(req.file.buffer) : null;
+        const videoUrl = uploadedVideo?.videoUrl || existingProperty.videoUrl;
+        const videoStreamUrl = uploadedVideo?.videoStreamUrl || existingProperty.videoStreamUrl;
+        const videoPosterUrl = uploadedVideo?.videoPosterUrl || existingProperty.videoPosterUrl;
 
         const property = await Property.findOneAndUpdate(
             { _id: req.params.id, landlordId: req.user._id },
-            { title: title.trim(), description: description.trim(), price: numericPrice, location: location.trim(), address: address.trim(), amenities: String(amenities || '').split(',').map(a => a.trim()).filter(Boolean), videoUrl, verificationStatus: 'pending' },
+            { title: title.trim(), description: description.trim(), price: numericPrice, location: location.trim(), address: address.trim(), amenities: String(amenities || '').split(',').map(a => a.trim()).filter(Boolean), videoUrl, videoStreamUrl, videoPosterUrl, verificationStatus: 'pending' },
             { new: true, runValidators: true }
         );
         if (!property) return res.status(404).send('Property not found');

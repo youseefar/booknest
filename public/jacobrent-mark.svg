@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title">
+  <title id="title">JacobRent J mark</title>
+  <path d="M43 20C12 39 2 76 11 109" fill="none" stroke="#17355c" stroke-width="8" stroke-linecap="round"/>
+  <path d="M116 22c34 22 44 61 28 93" fill="none" stroke="#c6a14a" stroke-width="7" stroke-linecap="round"/>
+  <path d="M50 40h58v15H66v45c0 15-10 24-26 24-13 0-23-6-29-17l13-10c4 7 9 10 16 10 7 0 10-4 10-11V40z" fill="#17355c"/>
+  <path d="M51 28h57v10H51z" fill="#c6a14a"/>
+  <path d="M26 126h96" fill="none" stroke="#c6a14a" stroke-width="4" stroke-linecap="round"/>
+</svg>
