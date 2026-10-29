@@ -27,6 +27,16 @@ const propertySchema = new mongoose.Schema({
     images: [{
         type: String
     }],
+    videoUrl: {
+        type: String,
+        default: ''
+    },
+    reviews: [{
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        rating: { type: Number, min: 1, max: 5, required: true },
+        comment: { type: String, trim: true, maxlength: 1000, required: true },
+        createdAt: { type: Date, default: Date.now }
+    }],
     landlordId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -43,5 +53,10 @@ const propertySchema = new mongoose.Schema({
         default: 'pending'
     },
 }, { timestamps: true });
+
+propertySchema.virtual('averageRating').get(function () {
+    if (!this.reviews?.length) return null;
+    return this.reviews.reduce((total, review) => total + review.rating, 0) / this.reviews.length;
+});
 
 module.exports = mongoose.model('Property', propertySchema);

@@ -1,12 +1,10 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 const mongoose = require('mongoose');
 const session = require('express-session');
 const MongoStore = require('connect-mongo').default;
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const multer = require('multer');
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 require('dotenv').config();
@@ -32,29 +30,6 @@ mongoose.set('bufferCommands', false);
 app.set('trust proxy', 1);
 
 const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/futb-housing';
-
-const uploadDir = path.join(__dirname, 'public', 'uploads');
-fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const safeName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
-    cb(null, safeName);
-  }
-});
-
-const upload = multer({
-  storage,
-  fileFilter: (req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-    if (allowed.includes(file.mimetype)) return cb(null, true);
-    cb(new Error('Only JPG, PNG, or WEBP images are allowed.'));
-  },
-  limits: { files: 5, fileSize: 5 * 1024 * 1024 }
-});
-
-app.locals.upload = upload;
 
 // Middleware
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -209,19 +184,19 @@ app.use((error, req, res, next) => {
 
   if (error.code === 'LIMIT_UNEXPECTED_FILE' || error.code === 'LIMIT_FILE_COUNT') {
     statusCode = 400;
-    title = 'Choose fewer photos';
-    message = 'You can upload up to five photos for each property.';
-    detail = 'Remove extra photos from your selection, then try again.';
+    title = 'Choose one property video';
+    message = 'Upload one video for each property.';
+    detail = 'Remove extra files from your selection, then try again.';
   } else if (error.code === 'LIMIT_FILE_SIZE') {
     statusCode = 400;
-    title = 'That photo is too large';
-    message = 'Each photo must be 5 MB or smaller.';
-    detail = 'Choose a smaller image, then try uploading again.';
-  } else if (error.message === 'Only JPG, PNG, or WEBP images are allowed.') {
+    title = 'That video is too large';
+    message = 'The property video must be 50 MB or smaller.';
+    detail = 'Choose a smaller video, then try uploading again.';
+  } else if (error.message === 'Property videos must be MP4, MOV, or WEBM files.') {
     statusCode = 400;
-    title = 'Choose a supported image';
-    message = 'Property photos must be JPG, PNG, or WEBP files.';
-    detail = 'Choose an image in one of those formats, then try again.';
+    title = 'Choose a supported video';
+    message = 'Property videos must be MP4, MOV, or WEBM files.';
+    detail = 'Choose a video in one of those formats, then try again.';
   }
 
   if (isAddPropertyRequest || isEditPropertyRequest) {

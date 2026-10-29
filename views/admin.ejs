@@ -36,6 +36,64 @@
     <% } else if (adminMessage === 'listing-updated') { %>
         <div class="alert alert-success" role="status">Listing status updated.</div>
     <% } %>
+    <% if (payoutMessage === 'sent') { %><div class="alert alert-success" role="status">Paystack accepted the transfer request.</div><% } %>
+    <% if (payoutMessage === 'complete') { %><div class="alert alert-success" role="status">Paystack accepted the transfer authorization.</div><% } %>
+    <% if (payoutMessage === 'account-saved') { %><div class="alert alert-success" role="status">The verified withdrawal account is ready.</div><% } %>
+    <% if (payoutMessage === 'otp') { %><div class="alert alert-info" role="status">Enter the authorization code from Paystack to complete the transfer.</div><% } %>
+    <% if (payoutMessage === 'error') { %><div class="alert alert-danger" role="alert">The transfer could not be completed. Check the Paystack balance and try again.</div><% } %>
+
+    <section class="admin-console-section admin-finance-panel mb-5" aria-labelledby="platform-balance-heading">
+        <div class="section-head">
+            <div><span class="eyebrow text-uppercase">Platform funds</span><h2 id="platform-balance-heading" class="h3 mb-0">Available balance</h2></div>
+            <% if (adminBalanceKobo !== null) { %><strong class="admin-balance-amount">₦<%= (adminBalanceKobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></strong><% } %>
+        </div>
+        <% if (adminBalanceMessage) { %><p class="text-muted mb-3"><%= adminBalanceMessage %></p><% } else { %><p class="text-muted mb-3">Platform funds only. Landlord shares are settled separately to their registered accounts.</p><% } %>
+
+        <% if (user.payoutBankCode && user.payoutAccountName && user.payoutAccountLast4) { %>
+            <p class="mb-3">Withdrawal account: <strong><%= user.payoutAccountName %></strong> · <%= user.payoutBankName %> ····<%= user.payoutAccountLast4 %></p>
+        <% } %>
+        <form id="payout-account-form" class="row g-3 mb-4" method="POST" action="/payments/admin-payout-account" data-selected-bank="<%= user.payoutBankCode || '' %>">
+            <input type="hidden" name="adminCsrfToken" value="<%= adminCsrfToken %>">
+            <div class="col-md-4">
+                <label class="form-label" for="payout-bank">Withdrawal bank</label>
+                <input id="payout-bank" class="form-control" type="search" list="payout-bank-options" placeholder="Type to search banks" autocomplete="off" required disabled>
+                <datalist id="payout-bank-options"></datalist>
+                <input id="payout-bank-code" name="bankCode" type="hidden">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="payout-account-number">Account number</label>
+                <input id="payout-account-number" name="accountNumber" class="form-control" type="text" inputmode="numeric" autocomplete="off" pattern="[0-9]{10}" minlength="10" maxlength="10" placeholder="10-digit account number" required>
+            </div>
+            <div class="col-12 d-flex flex-wrap align-items-center gap-2">
+                <button id="verify-payout-account" class="btn btn-outline-dark" type="button"><i class="bi bi-shield-check me-2"></i>Verify account</button>
+                <button id="save-payout-account" class="btn btn-primary" type="submit" disabled>Save withdrawal account</button>
+            </div>
+            <input id="verified-account-name" type="hidden" name="verifiedAccountName">
+            <div class="col-12"><p id="payout-account-status" class="small mb-0" role="status" aria-live="polite"></p></div>
+        </form>
+
+        <% if (user.payoutRecipientCode && user.payoutBankCode && user.payoutAccountLast4 && adminBalanceKobo > 0) { %>
+            <form class="row g-3 align-items-end" method="POST" action="/payments/admin/withdraw">
+                <input type="hidden" name="adminCsrfToken" value="<%= adminCsrfToken %>">
+                <div class="col-sm-6 col-md-4">
+                    <label class="form-label" for="withdraw-amount">Amount (NGN)</label>
+                    <input class="form-control" id="withdraw-amount" name="amount" type="number" min="100" step="0.01" max="<%= (adminBalanceKobo / 100).toFixed(2) %>" required>
+                </div>
+                <div class="col-sm-6 col-md-4"><button class="btn btn-primary" type="submit"><i class="bi bi-bank me-2"></i>Withdraw to verified account</button></div>
+            </form>
+        <% } %>
+
+        <% if (pendingAdminTransfer) { %>
+            <form class="row g-3 align-items-end mt-2" method="POST" action="/payments/admin/withdraw/finalize">
+                <input type="hidden" name="adminCsrfToken" value="<%= adminCsrfToken %>">
+                <div class="col-sm-6 col-md-4">
+                    <label class="form-label" for="transfer-otp">Paystack authorization code</label>
+                    <input class="form-control" id="transfer-otp" name="otp" inputmode="numeric" autocomplete="one-time-code" required>
+                </div>
+                <div class="col-sm-6 col-md-4"><button class="btn btn-outline-primary" type="submit">Authorize ₦<%= (pendingAdminTransfer.amountKobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 }) %> transfer</button></div>
+            </form>
+        <% } %>
+    </section>
 
     <div class="row g-3 mb-5 admin-metrics">
         <div class="col-6 col-xl-3"><div class="admin-stat-card"><i class="bi bi-people-fill"></i><div><small>All accounts</small><strong><%= userCount %></strong><em><%= studentCount %> students · <%= landlordCount %> landlords</em></div></div></div>
@@ -185,7 +243,7 @@
                 <div class="airbnb-list-row admin-listing-row">
                     <a class="airbnb-row-link" href="/property/<%= property._id %>">
                         <span class="dashboard-list-thumb">
-                            <% if (property.images && property.images.length) { %><img src="<%= property.images[0] %>" alt="<%= property.title %>"><% } else { %><i class="bi bi-house"></i><% } %>
+                            <% if (property.videoUrl) { %><video muted playsinline preload="metadata"><source src="<%= property.videoUrl %>"></video><% } else if (property.images && property.images.length) { %><img src="<%= property.images[0] %>" alt="<%= property.title %>"><% } else { %><i class="bi bi-house"></i><% } %>
                         </span>
                         <span class="admin-listing-copy">
                             <strong><%= property.title %></strong>
@@ -215,6 +273,7 @@
         </div>
     </section>
 </main>
+<script src="/js/payout-account.js" defer></script>
 <%- include('partials/legal-footer') %>
 </body>
 </html>

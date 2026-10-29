@@ -92,7 +92,7 @@
                 <% properties.forEach(property => { %>
                     <div class="airbnb-list-row">
                         <a class="airbnb-row-link" href="/property/<%= property._id %>">
-                            <span class="dashboard-list-thumb"><% if (property.images && property.images.length) { %><img src="<%= property.images[0] %>" alt=""><% } else { %><i class="bi bi-house"></i><% } %></span>
+                            <span class="dashboard-list-thumb"><% if (property.videoUrl) { %><video muted playsinline preload="metadata"><source src="<%= property.videoUrl %>"></video><% } else if (property.images && property.images.length) { %><img src="<%= property.images[0] %>" alt=""><% } else { %><i class="bi bi-house"></i><% } %></span>
                             <span>
                                 <strong><%= property.title %></strong>
                                 <small><%= property.location %> · ₦<%= property.price.toLocaleString() %>/month</small>
@@ -139,7 +139,9 @@
                     <div class="airbnb-list-row booked-home-row">
                         <a class="airbnb-row-link" href="<%= booking.propertyId ? '/property/' + booking.propertyId._id : '/my-bookings' %>">
                             <span class="dashboard-list-thumb">
-                                <% if (booking.propertyId && booking.propertyId.images && booking.propertyId.images.length) { %>
+                                <% if (booking.propertyId && booking.propertyId.videoUrl) { %>
+                                    <video muted playsinline preload="metadata"><source src="<%= booking.propertyId.videoUrl %>"></video>
+                                <% } else if (booking.propertyId && booking.propertyId.images && booking.propertyId.images.length) { %>
                                     <img src="<%= booking.propertyId.images[0] %>" alt="<%= booking.propertyId.title %>">
                                 <% } else { %>
                                     <i class="bi bi-house"></i>

@@ -1,35 +1,20 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
+const multer = require('multer');
 const Property = require('../models/Property');
 const Booking = require('../models/Booking');
 const mongoose = require('mongoose');
+const { uploadPropertyVideo } = require('../services/cloudinary');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const router = express.Router();
 
-const uploadDir = path.join(__dirname, '..', 'public', 'uploads');
-fs.mkdirSync(uploadDir, { recursive: true });
-
-const imageUpload = (req, res, next) => {
-    const multer = require('multer');
-    const storage = multer.diskStorage({
-        destination: (req, file, cb) => cb(null, uploadDir),
-        filename: (req, file, cb) => {
-            const safeName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
-            cb(null, safeName);
-        }
-    });
-    const upload = multer({
-        storage,
-        fileFilter: (req, file, cb) => {
-            const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-            if (allowed.includes(file.mimetype)) return cb(null, true);
-            cb(new Error('Only JPG, PNG, or WEBP images are allowed.'));
-        },
-        limits: { files: 5, fileSize: 5 * 1024 * 1024 }
-    });
-    upload.array('images', 5)(req, res, next);
-};
+const videoUpload = multer({
+    storage: multer.memoryStorage(),
+    fileFilter: (req, file, cb) => {
+        if (['video/mp4', 'video/quicktime', 'video/webm'].includes(file.mimetype)) return cb(null, true);
+        cb(new Error('Property videos must be MP4, MOV, or WEBM files.'));
+    },
+    limits: { files: 1, fileSize: 50 * 1024 * 1024 }
+}).single('video');
 
 // View all properties
 router.get('/properties', async (req, res) => {
@@ -82,9 +67,19 @@ router.get('/property/:id', async (req, res) => {
             || req.user?.role === 'admin'
             || property.landlordId?._id.equals(req.user?._id);
         if (!canView) return res.status(404).send('Property not found');
+        const reviewEligible = req.user?.role === 'student' && Boolean(await Booking.exists({
+            studentId: req.user._id,
+            propertyId: property._id,
+            paymentStatus: 'paid'
+        }));
+        const reviewed = property.reviews.some(review => String(review.userId) === String(req.user?._id));
+        await property.populate('reviews.userId', 'name');
         res.render('property-detail', {
             property,
             user: req.user,
+            reviewEligible,
+            reviewed,
+            reviewResult: req.query.review,
             paystackMode: req.app.locals.paystackMode,
             paystackReady: Boolean(property.landlordId?.payoutSubaccountCode)
                 && property.landlordId.payoutSubaccountMode === req.app.locals.paystackMode
@@ -117,7 +112,7 @@ router.get('/my-properties', requireRole('landlord'), async (req, res) => {
 });
 
 // Add property post
-router.post('/add-property', requireRole('landlord'), imageUpload, async (req, res) => {
+router.post('/add-property', requireRole('landlord'), videoUpload, async (req, res) => {
     try {
         if (req.user.role !== 'landlord') {
             return res.status(403).send('Only landlords can add properties');
@@ -129,11 +124,10 @@ router.post('/add-property', requireRole('landlord'), imageUpload, async (req, r
         const cleanLocation = String(location || '').trim();
         const cleanAddress = String(address || '').trim();
         const numericPrice = Number(price);
-        const uploadedImages = (req.files || []).map(file => `/uploads/${file.filename}`);
-
         if (!cleanTitle || !cleanDescription || !cleanLocation || !cleanAddress || !Number.isFinite(numericPrice) || numericPrice <= 0) {
             return res.status(400).render('add-property', { user: req.user, message: 'Please complete every field with valid information.' });
         }
+        const videoUrl = req.file ? await uploadPropertyVideo(req.file.buffer) : '';
 
         const newProperty = new Property({
             title: cleanTitle,
@@ -142,7 +136,7 @@ router.post('/add-property', requireRole('landlord'), imageUpload, async (req, r
             location: cleanLocation,
             address: cleanAddress,
             amenities: String(amenities || '').split(',').map(a => a.trim()).filter(Boolean),
-            images: uploadedImages,
+            videoUrl,
             landlordId: req.user._id
         });
 
@@ -161,7 +155,7 @@ router.get('/property/:id/edit', requireRole('landlord'), async (req, res) => {
     res.render('edit-property', { property, user: req.user });
 });
 
-router.post('/property/:id/edit', requireRole('landlord'), imageUpload, async (req, res) => {
+router.post('/property/:id/edit', requireRole('landlord'), videoUpload, async (req, res) => {
     try {
         if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found');
         const { title, description, price, location, address, amenities } = req.body;
@@ -173,18 +167,40 @@ router.post('/property/:id/edit', requireRole('landlord'), imageUpload, async (r
         const existingProperty = await Property.findOne({ _id: req.params.id, landlordId: req.user._id });
         if (!existingProperty) return res.status(404).send('Property not found');
 
-        const uploadedImages = (req.files || []).map(file => `/uploads/${file.filename}`);
-        const mergedImages = uploadedImages.length ? uploadedImages : existingProperty.images;
+        const videoUrl = req.file ? await uploadPropertyVideo(req.file.buffer) : existingProperty.videoUrl;
 
         const property = await Property.findOneAndUpdate(
             { _id: req.params.id, landlordId: req.user._id },
-            { title: title.trim(), description: description.trim(), price: numericPrice, location: location.trim(), address: address.trim(), amenities: String(amenities || '').split(',').map(a => a.trim()).filter(Boolean), images: mergedImages, verificationStatus: 'pending' },
+            { title: title.trim(), description: description.trim(), price: numericPrice, location: location.trim(), address: address.trim(), amenities: String(amenities || '').split(',').map(a => a.trim()).filter(Boolean), videoUrl, verificationStatus: 'pending' },
             { new: true, runValidators: true }
         );
         if (!property) return res.status(404).send('Property not found');
         res.redirect('/dashboard');
     } catch (err) {
         res.status(500).send('Unable to update this property.');
+    }
+});
+
+router.post('/property/:id/reviews', requireRole('student'), async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
+    const rating = Number(req.body.rating);
+    const comment = String(req.body.comment || '').trim();
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5 || comment.length < 2 || comment.length > 1000) {
+        return res.redirect(`/property/${req.params.id}?review=invalid`);
+    }
+
+    try {
+        const hasPaidBooking = await Booking.exists({ studentId: req.user._id, propertyId: req.params.id, paymentStatus: 'paid' });
+        if (!hasPaidBooking) return res.status(403).send('Only students with a paid booking can review this property.');
+
+        const result = await Property.updateOne(
+            { _id: req.params.id, 'reviews.userId': { $ne: req.user._id } },
+            { $push: { reviews: { userId: req.user._id, rating, comment } } }
+        );
+        return res.redirect(`/property/${req.params.id}?review=${result.modifiedCount ? 'submitted' : 'duplicate'}`);
+    } catch (error) {
+        console.error('Property review submission failed:', error.message);
+        return res.status(500).send('Unable to submit your review right now.');
     }
 });
 

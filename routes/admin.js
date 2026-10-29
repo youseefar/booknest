@@ -1,14 +1,32 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const Property = require('../models/Property');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
+const { getPaystackSecretKey, paystackConfigurationMessage, paystackRequest } = require('../services/paystack');
 const { requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
 router.get('/admin', requireRole('admin'), async (req, res) => {
     try {
+        req.session.adminPayoutCsrfToken = crypto.randomBytes(32).toString('hex');
+        const adminCsrfToken = req.session.adminPayoutCsrfToken;
+        const secretKey = getPaystackSecretKey();
+        let adminBalanceKobo = null;
+        let adminBalanceMessage = secretKey ? '' : paystackConfigurationMessage();
+        if (secretKey) {
+            try {
+                const balances = await paystackRequest('/balance?currency=NGN', secretKey, { method: 'GET' });
+                adminBalanceKobo = Array.isArray(balances)
+                    ? balances.find(balance => balance.currency === 'NGN')?.balance ?? 0
+                    : null;
+                if (adminBalanceKobo === null) adminBalanceMessage = 'Paystack did not return an NGN balance.';
+            } catch (error) {
+                adminBalanceMessage = 'Unable to load the Paystack balance right now.';
+            }
+        }
         const search = String(req.query.q || '').trim();
         const role = ['student', 'landlord', 'admin'].includes(req.query.role) ? req.query.role : '';
         const propertyStatus = ['available', 'rented', 'maintenance'].includes(req.query.propertyStatus) ? req.query.propertyStatus : '';
@@ -50,7 +68,12 @@ router.get('/admin', requireRole('admin'), async (req, res) => {
             role,
             propertyStatus,
             verificationStatus,
-            adminMessage: req.query.message
+            adminMessage: req.query.message,
+            adminBalanceKobo,
+            adminBalanceMessage,
+            adminCsrfToken,
+            pendingAdminTransfer: req.session.pendingAdminTransfer || null,
+            payoutMessage: req.query.payout
         });
     } catch (err) {
         res.status(500).send('Unable to load the moderation dashboard.');

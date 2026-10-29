@@ -23,6 +23,14 @@ Test and live subaccounts are separate. A landlord must set up the payout accoun
 
 The platform share is 1% of the transaction amount. Paystack transaction fees are assigned to the landlord's 99% share; Paystack may still apply settlement timing, account verification, or other account-level requirements. Split settlement is handled by Paystack and is not necessarily an instant bank transfer.
 
+## Admin balance withdrawals
+
+The admin dashboard reads the platform's available NGN balance from Paystack. This is not the gross value of all payments: landlord shares are settled to landlord subaccounts, and only the platform share is held in the platform balance. Admins can verify a bank account and request a transfer up to the currently available balance. Paystack may require an OTP or additional transfer permissions. The app stores the Paystack transfer-recipient code and masked bank details, not the full account number.
+
+## Property videos
+
+Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` in the host environment. New property videos are uploaded to Cloudinary and only their secure URLs are stored in MongoDB. Uploads accept one MP4, MOV, or WEBM video up to 50 MB. Existing photo-backed listings remain viewable.
+
 ## Test before launch
 
 1. Sign in as a student and open an available, verified property.

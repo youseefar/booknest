@@ -33,7 +33,12 @@
         <div class="row g-4">
             <div class="col-lg-7">
                 <div class="detail-gallery glass-card overflow-hidden">
-                    <% if (property.images && property.images.length) { %>
+                    <% if (property.videoUrl) { %>
+                        <video class="property-video w-100" controls preload="metadata" playsinline>
+                            <source src="<%= property.videoUrl %>">
+                            Your browser does not support video playback.
+                        </video>
+                    <% } else if (property.images && property.images.length) { %>
                         <div id="propertyCarousel" class="carousel slide" data-bs-ride="carousel">
                             <div class="carousel-inner">
                                 <% property.images.forEach((image, index) => { %>
@@ -63,6 +68,11 @@
                 <div class="glass-card p-4 h-100">
                     <span class="eyebrow text-uppercase"><%= property.status === 'rented' ? 'Booked home' : 'Verified rental' %></span>
                     <h1 class="h2 fw-bold mb-3"><%= property.title %></h1>
+                    <% if (property.averageRating) { %>
+                        <p class="mb-3 text-warning-emphasis"><i class="bi bi-star-fill me-1"></i><strong><%= property.averageRating.toFixed(1) %></strong><span class="text-muted"> / 5 · <%= property.reviews.length %> review<%= property.reviews.length === 1 ? '' : 's' %></span></p>
+                    <% } else { %>
+                        <p class="mb-3 text-muted"><i class="bi bi-star me-1"></i>No ratings yet</p>
+                    <% } %>
                     <div class="d-flex align-items-center gap-3 mb-3 text-success fw-semibold">
                         <span><i class="bi bi-geo-alt-fill me-1"></i><%= property.location %></span>
                         <span class="badge text-bg-success-subtle text-success"><%= property.status %></span>
@@ -109,6 +119,51 @@
                 </div>
             </div>
         </div>
+
+        <section class="property-reviews mt-5" aria-labelledby="reviews-heading">
+            <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+                <div><span class="eyebrow text-uppercase">Student feedback</span><h2 id="reviews-heading" class="h3 mb-0">Ratings and comments</h2></div>
+                <span class="text-muted"><%= property.reviews.length %> review<%= property.reviews.length === 1 ? '' : 's' %></span>
+            </div>
+            <% if (reviewResult === 'submitted') { %><div class="alert alert-success" role="status">Your review was added.</div><% } %>
+            <% if (reviewResult === 'duplicate') { %><div class="alert alert-info" role="status">You have already reviewed this home.</div><% } %>
+            <% if (reviewResult === 'invalid') { %><div class="alert alert-warning" role="status">Choose a rating and enter a comment of 2 to 1,000 characters.</div><% } %>
+
+            <% if (reviewEligible && !reviewed) { %>
+                <form class="glass-card p-4 mb-4" method="POST" action="/property/<%= property._id %>/reviews">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-sm-4 col-md-3">
+                            <label class="form-label" for="review-rating">Your rating</label>
+                            <select class="form-select" id="review-rating" name="rating" required>
+                                <option value="">Choose stars</option>
+                                <option value="5">5 stars</option><option value="4">4 stars</option><option value="3">3 stars</option><option value="2">2 stars</option><option value="1">1 star</option>
+                            </select>
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label" for="review-comment">Comment</label>
+                            <textarea class="form-control" id="review-comment" name="comment" rows="3" minlength="2" maxlength="1000" required placeholder="How was your stay?"></textarea>
+                        </div>
+                        <div class="col-12"><button class="btn btn-primary" type="submit"><i class="bi bi-chat-square-text me-2"></i>Post review</button></div>
+                    </div>
+                </form>
+            <% } else if (reviewed) { %>
+                <p class="text-muted">You have reviewed this home.</p>
+            <% } %>
+
+            <div class="row g-3">
+                <% property.reviews.slice().sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt)).forEach(review => { %>
+                    <div class="col-12"><article class="glass-card p-4">
+                        <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
+                            <strong><%= review.userId?.name || 'Student' %></strong>
+                            <span class="text-warning-emphasis" aria-label="<%= review.rating %> out of 5 stars"><i class="bi bi-star-fill me-1"></i><%= review.rating %>/5</span>
+                        </div>
+                        <p class="mb-2"><%= review.comment %></p>
+                        <small class="text-muted"><%= new Date(review.createdAt).toLocaleDateString() %></small>
+                    </article></div>
+                <% }); %>
+                <% if (!property.reviews.length) { %><div class="col-12"><p class="text-muted">No one has reviewed this home yet.</p></div><% } %>
+            </div>
+        </section>
 
         <div class="mt-4">
             <a href="/properties" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-2"></i>Back to properties</a>

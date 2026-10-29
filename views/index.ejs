@@ -87,7 +87,9 @@
                             <a href="<%= property.isPlaceholder ? '/properties' : '/property/' + property._id %>" class="property-link-card">
                                 <article class="airbnb-card">
                                     <div class="airbnb-image-wrap">
-                                        <% if (property.images && property.images.length) { %>
+                                        <% if (property.videoUrl) { %>
+                                            <video class="w-100 h-100 object-fit-cover" muted playsinline preload="metadata"><source src="<%= property.videoUrl %>"></video>
+                                        <% } else if (property.images && property.images.length) { %>
                                             <img src="<%= property.images[0] %>" alt="<%= property.title %>">
                                         <% } else { %>
                                             <div class="airbnb-placeholder">
@@ -108,6 +110,7 @@
                                             <div>
                                                 <h3><%= property.title %></h3>
                                                 <p class="location-line"><i class="bi bi-geo-alt-fill me-1"></i><%= property.location %></p>
+                                                <% if (property.averageRating) { %><p class="small text-warning-emphasis mb-0"><i class="bi bi-star-fill me-1"></i><strong><%= property.averageRating.toFixed(1) %></strong><span class="text-muted"> · <%= property.reviews.length %> review<%= property.reviews.length === 1 ? '' : 's' %></span></p><% } %>
                                             </div>
                                             <div class="price-tag">₦<%= property.price.toLocaleString() %><span>/month</span></div>
                                         </div>

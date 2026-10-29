@@ -57,7 +57,9 @@
                     <article class="property-card h-100 overflow-hidden shadow-sm border-0">
                         <a class="property-card-overlay" href="/property/<%= property._id %>" aria-label="View details for <%= property.title %>"></a>
                         <div class="property-image position-relative">
-                            <% if (property.images && property.images.length) { %>
+                            <% if (property.videoUrl) { %>
+                                <video class="w-100 h-100 object-fit-cover" muted playsinline preload="metadata"><source src="<%= property.videoUrl %>"></video>
+                            <% } else if (property.images && property.images.length) { %>
                                 <img src="<%= property.images[0] %>" alt="<%= property.title %>" class="w-100 h-100 object-fit-cover">
                             <% } else { %>
                                 <div class="d-flex align-items-center justify-content-center w-100 h-100 bg-gradient-rent text-white">
@@ -72,6 +74,7 @@
                                 <span class="price fw-bold text-dark">₦<%= property.price.toLocaleString() %><small class="text-muted">/month</small></span>
                             </div>
                             <h3 class="card-title h4 mb-2"><%= property.title %></h3>
+                            <% if (property.averageRating) { %><p class="small text-warning-emphasis mb-2"><i class="bi bi-star-fill me-1"></i><strong><%= property.averageRating.toFixed(1) %></strong><span class="text-muted"> · <%= property.reviews.length %> review<%= property.reviews.length === 1 ? '' : 's' %></span></p><% } %>
                             <p class="card-text text-muted"><%= property.description.length > 110 ? property.description.substring(0, 110) + '...' : property.description %></p>
                             <div class="property-card-actions d-flex justify-content-between align-items-center pt-3 border-top">
                                 <span class="muted"><%= property.amenities && property.amenities.length ? property.amenities.length : 0 %> amenities</span>

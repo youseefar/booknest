@@ -57,6 +57,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    payoutRecipientCode: {
+        type: String,
+        default: null
+    },
 }, { timestamps: true });
 
 // Hash password before saving

@@ -37,7 +37,7 @@
                     <div class="col-md-6"><label class="form-label" for="location">Area</label><input class="form-control" id="location" name="location" value="<%= property.location %>" required></div>
                     <div class="col-12"><label class="form-label" for="address">Street address</label><input class="form-control" id="address" name="address" value="<%= property.address %>" required></div>
                     <div class="col-12"><label class="form-label" for="amenities">Amenities</label><input class="form-control" id="amenities" name="amenities" value="<%= property.amenities.join(', ') %>"></div>
-                    <div class="col-12"><label class="form-label" for="images">Update photos</label><input class="form-control" id="images" type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple><div class="form-text">Leave empty to keep current photos. Add up to 5 JPG, PNG, or WEBP photos, each up to 5 MB; use images of the property itself.</div></div>
+                    <div class="col-12"><label class="form-label" for="video">Update property video</label><input class="form-control" id="video" type="file" name="video" accept="video/mp4,video/quicktime,video/webm"><div class="form-text">Leave empty to keep the current video. Upload one MP4, MOV, or WEBM video up to 50 MB; it will be stored on Cloudinary.</div></div>
                     <div class="col-12 d-grid gap-2 d-md-flex justify-content-md-between pt-3"><a href="/dashboard" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-2"></i>Back</a><button class="btn btn-primary btn-lg px-4" type="submit"><i class="bi bi-check2-circle me-2"></i>Save changes</button></div>
                 </form>
             </div>

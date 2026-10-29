@@ -4,54 +4,23 @@ const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Property = require('../models/Property');
 const { requireRole } = require('../middleware/auth');
+const { PAYSTACK_API, getPaymentMode, getPaystackSecretKey, paystackConfigurationMessage, paystackRequest } = require('../services/paystack');
 
 const router = express.Router();
-const PAYSTACK_API = 'https://api.paystack.co';
-
-function getPaymentMode() {
-    const configuredMode = String(process.env.PAYSTACK_MODE || '').trim().toLowerCase();
-    if (configuredMode === 'test' || configuredMode === 'live') return configuredMode;
-    return process.env.NODE_ENV === 'production' ? 'live' : 'test';
-}
-
-function getPaystackSecretKey() {
-    const secretKey = process.env.PAYSTACK_SECRET_KEY || '';
-    const requiredPrefix = getPaymentMode() === 'live' ? 'sk_live_' : 'sk_test_';
-    return secretKey.startsWith(requiredPrefix) ? secretKey : null;
-}
-
-function paystackConfigurationMessage() {
-    const secretKey = process.env.PAYSTACK_SECRET_KEY || '';
-    if (getPaymentMode() === 'test' && secretKey.startsWith('sk_live_')) {
-        return 'A live Paystack key is configured while payment mode is test. Set PAYSTACK_MODE=live in your local environment and restart the app to enable live payments.';
-    }
-    if (getPaymentMode() === 'live' && secretKey.startsWith('sk_test_')) {
-        return 'A test Paystack key is configured while payment mode is live. Set PAYSTACK_MODE=test or use a live key.';
-    }
-    return getPaymentMode() === 'live'
-        ? 'Live Paystack payments are not configured. Set a PAYSTACK_SECRET_KEY beginning with sk_live_.'
-        : 'Test Paystack payments are not configured. Set a PAYSTACK_SECRET_KEY beginning with sk_test_.';
-}
-
-async function paystackRequest(endpoint, secretKey, options = {}) {
-    const response = await fetch(`${PAYSTACK_API}${endpoint}`, {
-        ...options,
-        headers: {
-            Authorization: `Bearer ${secretKey}`,
-            'Content-Type': 'application/json',
-            ...options.headers
-        },
-        signal: options.signal || AbortSignal.timeout(15000)
-    });
-    const result = await response.json();
-    if (!response.ok || result?.status !== true) {
-        throw new Error(result?.message || 'Paystack request failed.');
-    }
-    return result.data;
-}
 
 function normalizeAccountName(value) {
     return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function verifyAdminPayoutToken(req, res) {
+    const expected = String(req.session?.adminPayoutCsrfToken || '');
+    const submitted = String(req.body.adminCsrfToken || '');
+    if (expected && submitted && expected.length === submitted.length && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(submitted))) {
+        req.session.adminPayoutCsrfToken = null;
+        return true;
+    }
+    res.status(403).send('This payout request has expired. Reload the admin dashboard and try again.');
+    return false;
 }
 
 async function resolvePayoutAccount(accountNumber, bankCode, secretKey) {
@@ -59,7 +28,7 @@ async function resolvePayoutAccount(accountNumber, bankCode, secretKey) {
     return paystackRequest(`/bank/resolve?${query}`, secretKey, { method: 'GET' });
 }
 
-router.get('/payments/banks', requireRole('landlord'), async (req, res) => {
+router.get('/payments/banks', requireRole('landlord', 'admin'), async (req, res) => {
     const secretKey = getPaystackSecretKey();
     if (!secretKey) return res.status(503).json({ message: paystackConfigurationMessage() });
 
@@ -76,7 +45,7 @@ router.get('/payments/banks', requireRole('landlord'), async (req, res) => {
     }
 });
 
-router.post('/payments/resolve-payout-account', requireRole('landlord'), async (req, res) => {
+router.post('/payments/resolve-payout-account', requireRole('landlord', 'admin'), async (req, res) => {
     const secretKey = getPaystackSecretKey();
     if (!secretKey) return res.status(503).json({ message: paystackConfigurationMessage() });
 
@@ -150,6 +119,108 @@ router.post('/payments/payout-account', requireRole('landlord'), async (req, res
     } catch (error) {
         console.error('Payout account setup failed:', error.message);
         return res.status(502).render('profile', { user: req.user, message: 'Paystack could not save this payout account. Please try again.' });
+    }
+});
+
+router.post('/payments/admin-payout-account', requireRole('admin'), async (req, res) => {
+    if (!verifyAdminPayoutToken(req, res)) return;
+    const secretKey = getPaystackSecretKey();
+    const accountNumber = String(req.body.accountNumber || '').trim();
+    const bankCode = String(req.body.bankCode || '').trim();
+    const verifiedAccountName = String(req.body.verifiedAccountName || '').trim();
+    if (!secretKey || !/^\d{10}$/.test(accountNumber) || !/^[a-z\d]{2,12}$/i.test(bankCode) || !verifiedAccountName) {
+        return res.redirect('/admin?payout=error');
+    }
+
+    try {
+        const account = await resolvePayoutAccount(accountNumber, bankCode, secretKey);
+        if (normalizeAccountName(account?.account_name) !== normalizeAccountName(verifiedAccountName)) {
+            return res.redirect('/admin?payout=error');
+        }
+        const recipient = await paystackRequest('/transferrecipient', secretKey, {
+            method: 'POST',
+            body: JSON.stringify({
+                type: 'nuban',
+                name: account.account_name,
+                account_number: accountNumber,
+                bank_code: bankCode,
+                currency: 'NGN'
+            })
+        });
+        if (!recipient?.recipient_code) throw new Error('Paystack did not return a transfer recipient code.');
+
+        req.user.payoutRecipientCode = recipient.recipient_code;
+        req.user.payoutBankCode = bankCode;
+        req.user.payoutBankName = recipient.details?.bank_name || bankCode;
+        req.user.payoutAccountName = account.account_name;
+        req.user.payoutAccountLast4 = accountNumber.slice(-4);
+        await req.user.save();
+        return res.redirect('/admin?payout=account-saved');
+    } catch (error) {
+        console.error('Admin payout account setup failed:', error.message);
+        return res.redirect('/admin?payout=error');
+    }
+});
+
+router.post('/payments/admin/withdraw', requireRole('admin'), async (req, res) => {
+    if (!verifyAdminPayoutToken(req, res)) return;
+    const secretKey = getPaystackSecretKey();
+    const amountValue = String(req.body.amount || '').trim();
+    if (!secretKey || !req.user.payoutRecipientCode || !/^\d+(?:\.\d{1,2})?$/.test(amountValue)) {
+        return res.redirect('/admin?payout=error');
+    }
+    const amountKobo = Math.round(Number(amountValue) * 100);
+    if (!Number.isSafeInteger(amountKobo) || amountKobo < 10000) return res.redirect('/admin?payout=error');
+
+    try {
+        const balances = await paystackRequest('/balance?currency=NGN', secretKey, { method: 'GET' });
+        const availableKobo = Array.isArray(balances)
+            ? balances.find(balance => balance.currency === 'NGN')?.balance
+            : null;
+        if (!Number.isSafeInteger(availableKobo) || amountKobo > availableKobo) return res.redirect('/admin?payout=error');
+
+        const reference = `FUTB_ADMIN_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
+        const transfer = await paystackRequest('/transfer', secretKey, {
+            method: 'POST',
+            body: JSON.stringify({
+                source: 'balance',
+                amount: amountKobo,
+                recipient: req.user.payoutRecipientCode,
+                reason: 'FUTB Housing platform withdrawal',
+                reference
+            })
+        });
+        if (transfer?.status === 'otp' && transfer.transfer_code) {
+            req.session.pendingAdminTransfer = { transferCode: transfer.transfer_code, amountKobo, reference };
+            return res.redirect('/admin?payout=otp');
+        }
+        req.session.pendingAdminTransfer = null;
+        return res.redirect('/admin?payout=sent');
+    } catch (error) {
+        console.error('Admin balance withdrawal failed:', error.message);
+        return res.redirect('/admin?payout=error');
+    }
+});
+
+router.post('/payments/admin/withdraw/finalize', requireRole('admin'), async (req, res) => {
+    if (!verifyAdminPayoutToken(req, res)) return;
+    const secretKey = getPaystackSecretKey();
+    const pendingTransfer = req.session.pendingAdminTransfer;
+    const otp = String(req.body.otp || '').trim();
+    if (!secretKey || !pendingTransfer?.transferCode || !/^\d{4,10}$/.test(otp)) {
+        return res.redirect('/admin?payout=error');
+    }
+
+    try {
+        await paystackRequest('/transfer/finalize_transfer', secretKey, {
+            method: 'POST',
+            body: JSON.stringify({ transfer_code: pendingTransfer.transferCode, otp })
+        });
+        req.session.pendingAdminTransfer = null;
+        return res.redirect('/admin?payout=complete');
+    } catch (error) {
+        console.error('Admin transfer authorization failed:', error.message);
+        return res.redirect('/admin?payout=error');
     }
 });
 

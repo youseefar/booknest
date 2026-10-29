@@ -2,7 +2,9 @@
     const form = document.getElementById('payout-account-form');
     if (!form) return;
 
-    const bankSelect = document.getElementById('payout-bank');
+    const bankInput = document.getElementById('payout-bank');
+    const bankOptions = document.getElementById('payout-bank-options');
+    const bankCodeInput = document.getElementById('payout-bank-code');
     const accountInput = document.getElementById('payout-account-number');
     const verifyButton = document.getElementById('verify-payout-account');
     const saveButton = document.getElementById('save-payout-account');
@@ -12,6 +14,7 @@
     let verificationRequestId = 0;
     let verificationTimer;
     let activeRequestController;
+    let availableBanks = [];
 
     const setStatus = (message, isError = false) => {
         status.textContent = message;
@@ -27,18 +30,18 @@
         verifiedAccountName = '';
         verifiedNameInput.value = '';
         saveButton.disabled = true;
-        verifyButton.disabled = !/^[0-9]{10}$/.test(accountInput.value.trim()) || !bankSelect.value;
+        verifyButton.disabled = !/^[0-9]{10}$/.test(accountInput.value.trim()) || !bankCodeInput.value;
         setStatus('');
     };
 
-    const hasCompleteAccount = () => /^[0-9]{10}$/.test(accountInput.value.trim()) && Boolean(bankSelect.value);
+    const hasCompleteAccount = () => /^[0-9]{10}$/.test(accountInput.value.trim()) && Boolean(bankCodeInput.value);
 
     const verifyAccount = async () => {
         if (!form.reportValidity() || !hasCompleteAccount()) return;
 
         const requestId = ++verificationRequestId;
         const accountNumber = accountInput.value.trim();
-        const bankCode = bankSelect.value;
+        const bankCode = bankCodeInput.value;
         activeRequestController?.abort();
         activeRequestController = new AbortController();
         verifyButton.disabled = true;
@@ -88,17 +91,27 @@
             return result.banks;
         })
         .then(banks => {
-            bankSelect.replaceChildren(new Option('Choose your bank', ''));
-            banks.forEach(bank => bankSelect.add(new Option(bank.name, bank.code)));
-            bankSelect.disabled = false;
-            bankSelect.value = form.dataset.selectedBank;
+            availableBanks = banks;
+            bankOptions.replaceChildren();
+            banks.forEach(bank => bankOptions.append(new Option(bank.name)));
+            bankInput.disabled = false;
+            const selectedBank = banks.find(bank => bank.code === form.dataset.selectedBank);
+            if (selectedBank) {
+                bankInput.value = selectedBank.name;
+                bankCodeInput.value = selectedBank.code;
+            }
         })
         .catch(() => {
-            bankSelect.replaceChildren(new Option('Banks are unavailable', ''));
+            bankOptions.replaceChildren();
+            bankInput.disabled = true;
             setStatus('Bank list is unavailable. Please refresh and try again.', true);
         });
 
-    bankSelect.addEventListener('change', queueAccountVerification);
+    bankInput.addEventListener('input', () => {
+        const matchedBank = availableBanks.find(bank => bank.name.toLowerCase() === bankInput.value.trim().toLowerCase());
+        bankCodeInput.value = matchedBank?.code || '';
+        queueAccountVerification();
+    });
     accountInput.addEventListener('input', queueAccountVerification);
     verifyButton.addEventListener('click', () => {
         window.clearTimeout(verificationTimer);

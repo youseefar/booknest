@@ -43,7 +43,9 @@
                 <form id="payout-account-form" class="row g-3" method="POST" action="/payments/payout-account" data-selected-bank="<%= user.payoutBankCode || '' %>">
                     <div class="col-md-6">
                         <label class="form-label" for="payout-bank">Bank</label>
-                        <select id="payout-bank" name="bankCode" class="form-select" required disabled><option value="">Loading banks...</option></select>
+                        <input id="payout-bank" class="form-control" type="search" list="payout-bank-options" placeholder="Type to search banks" autocomplete="off" required disabled>
+                        <datalist id="payout-bank-options"></datalist>
+                        <input id="payout-bank-code" name="bankCode" type="hidden">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="payout-account-number">Account number</label>
