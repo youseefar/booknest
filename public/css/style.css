@@ -978,6 +978,7 @@ html[data-theme="dark"] .site-legal-footer a {
 
 .wish-btn {
     position: absolute;
+    z-index: 2;
     top: 14px;
     right: 14px;
     width: 40px;

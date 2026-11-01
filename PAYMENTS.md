@@ -9,6 +9,7 @@ The app uses Paystack-hosted checkout and split payments. A student can pay the 
 3. Set `APP_URL` to the app's public HTTPS URL in production. For local testing, use `http://localhost:5000` and keep the browser on that same machine.
 4. Configure `MONGODB_URI` and a random `SESSION_SECRET` of at least 32 characters in the host environment, then restart/redeploy.
 5. In the Paystack dashboard, configure the webhook URL as `https://<your-app>/payments/paystack/webhook`. The app validates Paystack's HMAC SHA512 signature over the raw request body and independently verifies successful transactions before recording them.
+6. Configure password reset and seller inquiry email by setting `RESEND_API_KEY` and `EMAIL_FROM` in Render. Verify the sender domain with Resend and use a sender address on that domain (for example, `Jacob Estate <noreply@your-domain>`). Email is optional in development; when it is not configured, a development-only reset link is shown on the page. Production password resets return service unavailable until email is configured.
 
 Never commit `.env` or paste secret keys into chat. `.env.example` contains placeholders only.
 
@@ -32,6 +33,8 @@ The admin dashboard reads the platform's available NGN balance from Paystack. Th
 ## Low-storage media policy
 
 The app does not accept property video or image uploads, avoiding media-hosting charges and large uploads. Existing static assets and listing image URLs remain supported. Property listing fields have size limits, and each listing accepts at most 20 short amenity labels. Older video links may remain in MongoDB for compatibility but are no longer requested by the app.
+
+Property discovery uses a weighted MongoDB text index on listing titles, areas, and addresses, and serves 12 results per page. Bedroom and bathroom counts are optional owner-provided details; existing listings remain valid and never display guessed counts.
 
 ## Test before launch
 

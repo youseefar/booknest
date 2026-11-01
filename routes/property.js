@@ -4,14 +4,52 @@ const Booking = require('../models/Booking');
 const PropertyInquiry = require('../models/PropertyInquiry');
 const mongoose = require('mongoose');
 const { requireRole } = require('../middleware/auth');
+const { SORT_OPTIONS, getPagination, parsePage, parseSort } = require('../services/listing-pagination');
+const { parseSavedPropertyIds } = require('../services/saved-property-ids');
+const { parseOptionalRoomCount } = require('../services/property-details');
+const { normalizePropertySearch } = require('../services/property-search');
 const router = express.Router();
+
+router.get('/saved-properties', async (req, res, next) => {
+    try {
+        const savedIds = parseSavedPropertyIds(req.query.ids);
+        const properties = savedIds.length
+            ? await Property.find({
+                _id: { $in: savedIds },
+                verificationStatus: 'verified',
+                status: { $in: ['available', 'rented', 'sold'] }
+            }).populate('landlordId', 'name')
+            : [];
+        const propertyById = new Map(properties.map(property => [String(property._id), property]));
+
+        res.render('saved-properties', {
+            properties: savedIds.map(id => propertyById.get(id)).filter(Boolean),
+            user: req.user
+        });
+    } catch (err) {
+        return next(err);
+    }
+});
 
 // View all properties
 router.get('/properties', async (req, res, next) => {
     try {
         await Booking.syncExpiredSubscriptions();
         const search = String(req.query.q || '').trim();
+        if (search.length > 100) {
+            const error = new Error('Search terms must be 100 characters or fewer.');
+            error.status = 400;
+            return next(error);
+        }
+        const normalizedSearch = normalizePropertySearch(search);
+        if (search && !normalizedSearch) {
+            const error = new Error('Search must include at least one letter or number.');
+            error.status = 400;
+            return next(error);
+        }
         const listingType = ['rent', 'sale'].includes(req.query.type) ? req.query.type : '';
+        const sort = parseSort(req.query.sort);
+        const requestedPage = parsePage(req.query.page);
         const filter = req.user?.role === 'admin'
             ? {}
             : req.user?.role === 'landlord'
@@ -26,12 +64,7 @@ router.get('/properties', async (req, res, next) => {
         if (listingType) filter.listingType = listingType;
 
         if (search) {
-            const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const searchFilter = {
-                $or: ['title', 'location', 'address'].map(field => ({
-                    [field]: { $regex: escapedSearch, $options: 'i' }
-                }))
-            };
+            const searchFilter = { $text: { $search: normalizedSearch } };
             if (Object.keys(filter).length) {
                 filter.$and = [searchFilter];
             } else {
@@ -39,9 +72,22 @@ router.get('/properties', async (req, res, next) => {
             }
         }
 
-        const properties = await Property.find(filter).sort({ createdAt: -1 })
-            .populate('landlordId', 'name phone email');
-        res.render('properties', { properties, user: req.user, search, listingType });
+        const totalCount = await Property.countDocuments(filter);
+        const pagination = getPagination(requestedPage, totalCount);
+        const properties = await Property.find(filter)
+            .sort(SORT_OPTIONS[sort])
+            .skip(pagination.skip)
+            .limit(pagination.pageSize)
+            .populate('landlordId', 'name');
+        res.render('properties', {
+            properties,
+            user: req.user,
+            search,
+            listingType,
+            sort,
+            listingPath: '/properties',
+            ...pagination
+        });
     } catch (err) {
         return next(err);
     }
@@ -102,8 +148,25 @@ router.get('/my-properties', requireRole('landlord'), async (req, res, next) => 
     }
 
     try {
-        const properties = await Property.find({ landlordId: req.user._id }).sort({ createdAt: -1 });
-        res.render('properties', { properties, user: req.user, landlordView: true, search: '', listingType: '' });
+        const filter = { landlordId: req.user._id };
+        const sort = parseSort(req.query.sort);
+        const requestedPage = parsePage(req.query.page);
+        const totalCount = await Property.countDocuments(filter);
+        const pagination = getPagination(requestedPage, totalCount);
+        const properties = await Property.find(filter)
+            .sort(SORT_OPTIONS[sort])
+            .skip(pagination.skip)
+            .limit(pagination.pageSize);
+        res.render('properties', {
+            properties,
+            user: req.user,
+            landlordView: true,
+            search: '',
+            listingType: '',
+            sort,
+            listingPath: '/my-properties',
+            ...pagination
+        });
     } catch (err) {
         return next(err);
     }
@@ -117,6 +180,8 @@ router.post('/add-property', requireRole('landlord'), async (req, res, next) => 
         }
 
         const { title, description, price, location, address, amenities } = req.body;
+        const bedrooms = parseOptionalRoomCount(req.body.bedrooms);
+        const bathrooms = parseOptionalRoomCount(req.body.bathrooms);
         const listingType = String(req.body.listingType || '');
         const cleanTitle = String(title || '').trim();
         const cleanDescription = String(description || '').trim();
@@ -127,6 +192,7 @@ router.post('/add-property', requireRole('landlord'), async (req, res, next) => 
         if (!cleanTitle || cleanTitle.length > 120 || !cleanDescription || cleanDescription.length > 3000
             || !cleanLocation || cleanLocation.length > 120 || !cleanAddress || cleanAddress.length > 240
             || cleanAmenities.length > 20 || cleanAmenities.some(amenity => amenity.length > 80)
+            || bedrooms === undefined || bathrooms === undefined
             || !['rent', 'sale'].includes(listingType) || !Number.isFinite(numericPrice) || numericPrice <= 0) {
             return res.status(400).render('add-property', { user: req.user, message: 'Please complete every field with valid information.' });
         }
@@ -137,6 +203,8 @@ router.post('/add-property', requireRole('landlord'), async (req, res, next) => 
             listingType,
             location: cleanLocation,
             address: cleanAddress,
+            bedrooms,
+            bathrooms,
             amenities: cleanAmenities,
             landlordId: req.user._id
         });
@@ -170,9 +238,12 @@ router.post('/property/:id/edit', requireRole('landlord'), async (req, res, next
         const cleanLocation = String(location || '').trim();
         const cleanAddress = String(address || '').trim();
         const cleanAmenities = String(amenities || '').split(',').map(a => a.trim()).filter(Boolean);
+        const bedrooms = parseOptionalRoomCount(req.body.bedrooms);
+        const bathrooms = parseOptionalRoomCount(req.body.bathrooms);
         if (!cleanTitle || cleanTitle.length > 120 || !cleanDescription || cleanDescription.length > 3000
             || !cleanLocation || cleanLocation.length > 120 || !cleanAddress || cleanAddress.length > 240
             || cleanAmenities.length > 20 || cleanAmenities.some(amenity => amenity.length > 80)
+            || bedrooms === undefined || bathrooms === undefined
             || !['rent', 'sale'].includes(listingType) || !Number.isFinite(numericPrice) || numericPrice <= 0) {
             return res.status(400).send('Please provide valid property details.');
         }
@@ -192,7 +263,7 @@ router.post('/property/:id/edit', requireRole('landlord'), async (req, res, next
 
         const property = await Property.findOneAndUpdate(
             { _id: req.params.id, landlordId: req.user._id },
-            { title: cleanTitle, description: cleanDescription, price: numericPrice, listingType, location: cleanLocation, address: cleanAddress, amenities: cleanAmenities, verificationStatus: 'pending' },
+            { title: cleanTitle, description: cleanDescription, price: numericPrice, listingType, location: cleanLocation, address: cleanAddress, bedrooms, bathrooms, amenities: cleanAmenities, verificationStatus: 'pending' },
             { new: true, runValidators: true }
         );
         if (!property) return res.status(404).send('Property not found');

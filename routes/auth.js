@@ -7,6 +7,7 @@ const Property = require('../models/Property');
 const Booking = require('../models/Booking');
 const PropertyInquiry = require('../models/PropertyInquiry');
 const { requireAuth } = require('../middleware/auth');
+const { isEmailConfigured, sendEmail } = require('../services/email');
 const router = express.Router();
 
 const getPropertyReturnPath = value => {
@@ -128,21 +129,81 @@ router.get('/forgot-password', (req, res) => {
 // Create a short-lived password reset token. The response stays generic to avoid exposing account existence.
 router.post('/forgot-password', async (req, res, next) => {
   const emailValue = String(req.body.email || '').trim().toLowerCase();
-  const response = { message: 'If an account uses that email, password reset instructions have been created.' };
+  const emailConfigured = isEmailConfigured();
+  const response = {
+    message: emailConfigured
+      ? 'If an account uses that email, reset instructions will be sent. If you do not receive them, check your spam folder or try again later.'
+      : 'In development, a reset link appears below if the account matches.'
+  };
+  let resetUser = null;
 
   try {
+    if (process.env.NODE_ENV === 'production' && !emailConfigured) {
+      const error = new Error('Password reset email delivery is not configured.');
+      error.code = 'EMAIL_NOT_CONFIGURED';
+      error.status = 503;
+      return next(error);
+    }
+
     const user = await User.findOne({ email: emailValue }).select('+passwordResetToken +passwordResetExpires');
     if (user) {
       const rawToken = crypto.randomBytes(32).toString('hex');
       user.passwordResetToken = crypto.createHash('sha256').update(rawToken).digest('hex');
       user.passwordResetExpires = new Date(Date.now() + 30 * 60 * 1000);
       await user.save();
-      if (process.env.NODE_ENV !== 'production') {
+      resetUser = user;
+
+      if (emailConfigured) {
+        const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+        const resetUrl = new URL(`/reset-password/${rawToken}`, baseUrl).toString();
+        try {
+          await sendEmail({
+            to: user.email,
+            subject: 'Reset your Jacob Estate password',
+            text: [
+              `Hello ${user.name},`,
+              '',
+              'We received a request to reset your Jacob Estate password.',
+              `Use this link within 30 minutes: ${resetUrl}`,
+              '',
+              'If you did not request this, you can ignore this email.'
+            ].join('\n')
+          });
+        } catch (emailError) {
+          console.error('Password reset email failed:', {
+            name: emailError.name,
+            code: emailError.code
+          });
+          user.passwordResetToken = undefined;
+          user.passwordResetExpires = undefined;
+          try {
+            await user.save();
+            resetUser = null;
+          } catch (cleanupError) {
+            console.error('Password reset token cleanup failed:', {
+              name: cleanupError.name,
+              code: cleanupError.code
+            });
+          }
+        }
+      } else {
         response.resetLink = `/reset-password/${rawToken}`;
       }
     }
     res.render('forgot-password', response);
   } catch (err) {
+    if (resetUser) {
+      resetUser.passwordResetToken = undefined;
+      resetUser.passwordResetExpires = undefined;
+      try {
+        await resetUser.save();
+      } catch (cleanupError) {
+        console.error('Password reset token cleanup failed:', {
+          name: cleanupError.name,
+          code: cleanupError.code
+        });
+      }
+    }
     return next(err);
   }
 });
@@ -168,8 +229,8 @@ router.post('/reset-password/:token', async (req, res) => {
   if (!user) return res.status(400).render('reset-password', { message: 'This reset link is invalid or has expired.' });
 
   user.password = password;
-  user.passwordResetToken = null;
-  user.passwordResetExpires = null;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
   await user.save();
   res.redirect('/login?reset=success');
 });
