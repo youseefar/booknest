@@ -1227,8 +1227,7 @@ html[data-theme="dark"] .site-legal-footer a {
     font-size: 1.4rem;
 }
 
-.dashboard-list-thumb img,
-.dashboard-list-thumb video {
+.dashboard-list-thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -2350,8 +2349,7 @@ html[data-theme="dark"] .pill-expired {
     background: #e9f0ec;
 }
 
-.dashboard-list-thumb img,
-.dashboard-list-thumb video {
+.dashboard-list-thumb img {
     display: block;
 }
 
@@ -2924,10 +2922,6 @@ textarea:focus-visible {
     background-color: #dfe9e5;
 }
 
-.property-image video {
-    display: block;
-}
-
 .airbnb-card-body,
 .property-card .card-body {
     padding: 1.1rem 1.15rem 1.2rem !important;
@@ -2957,34 +2951,6 @@ textarea:focus-visible {
 
 .detail-gallery .carousel-item img {
     height: clamp(300px, 48vw, 540px) !important;
-}
-
-.adaptive-property-video {
-    position: relative;
-}
-
-.adaptive-property-video .property-video {
-    display: block;
-    height: clamp(300px, 48vw, 540px);
-    background: #111;
-    object-fit: contain;
-}
-
-.property-video-start {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-
-.property-video-status {
-    position: absolute;
-    right: 0.75rem;
-    bottom: 0.5rem;
-    left: 0.75rem;
-    color: #fff;
-    text-align: center;
-    text-shadow: 0 1px 3px #000;
 }
 
 .glass-card,

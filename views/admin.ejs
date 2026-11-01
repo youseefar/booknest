@@ -244,7 +244,7 @@
                 <div class="airbnb-list-row admin-listing-row">
                     <a class="airbnb-row-link" href="/property/<%= property._id %>">
                         <span class="dashboard-list-thumb">
-                            <% if (property.videoPosterUrl) { %><img src="<%= property.videoPosterUrl %>" alt="Preview of <%= property.title %>" loading="lazy"><% } else if (property.images && property.images.length) { %><img src="<%= property.images[0] %>" alt="<%= property.title %>" loading="lazy"><% } else { %><i class="bi bi-house"></i><% } %>
+                            <% if (property.images && property.images.length) { %><img src="<%= property.images[0] %>" alt="<%= property.title %>" loading="lazy"><% } else { %><i class="bi bi-house"></i><% } %>
                         </span>
                         <span class="admin-listing-copy">
                             <strong><%= property.title %></strong>

@@ -63,9 +63,7 @@
                     <article class="property-card h-100 overflow-hidden shadow-sm border-0">
                         <a class="property-card-overlay" href="/property/<%= property._id %>" aria-label="View details for <%= property.title %>"></a>
                         <div class="property-image position-relative">
-                            <% if (property.videoPosterUrl) { %>
-                                <img src="<%= property.videoPosterUrl %>" alt="Preview of <%= property.title %>" class="w-100 h-100 object-fit-cover" loading="lazy">
-                            <% } else if (property.images && property.images.length) { %>
+                            <% if (property.images && property.images.length) { %>
                                 <img src="<%= property.images[0] %>" alt="<%= property.title %>" class="w-100 h-100 object-fit-cover">
                             <% } else { %>
                                 <div class="d-flex align-items-center justify-content-center w-100 h-100 bg-gradient-rent text-white">

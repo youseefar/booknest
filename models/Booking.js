@@ -13,7 +13,8 @@ const bookingSchema = new mongoose.Schema({
     },
     message: {
         type: String,
-        default: ''
+        default: '',
+        maxlength: 1000
     },
     status: {
         type: String,
@@ -69,6 +70,10 @@ const bookingSchema = new mongoose.Schema({
 
 bookingSchema.index({ studentId: 1, propertyId: 1 }, { unique: true });
 bookingSchema.index({ paymentReference: 1 }, { unique: true, sparse: true });
+bookingSchema.index({ studentId: 1, timestamp: -1 });
+bookingSchema.index({ propertyId: 1, status: 1 });
+bookingSchema.index({ paymentStatus: 1, status: 1, subscriptionExpiresAt: 1 });
+bookingSchema.index({ paymentStatus: 1, paymentPaidAt: 1 });
 
 bookingSchema.statics.addOneCalendarMonth = function (date) {
     const expiresAt = new Date(date);

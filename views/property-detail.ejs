@@ -33,12 +33,7 @@
         <div class="row g-4">
             <div class="col-lg-7">
                 <div class="detail-gallery glass-card overflow-hidden">
-                    <% if (property.videoUrl) { %>
-                        <video class="property-video w-100" controls preload="none" playsinline poster="<%= property.videoPosterUrl || '' %>" aria-label="<%= property.title %> video">
-                            <source src="<%= property.videoUrl %>">
-                            Your browser does not support video playback.
-                        </video>
-                    <% } else if (property.images && property.images.length) { %>
+                    <% if (property.images && property.images.length) { %>
                         <div id="propertyCarousel" class="carousel slide" data-bs-ride="carousel">
                             <div class="carousel-inner">
                                 <% property.images.forEach((image, index) => { %>
@@ -149,8 +144,9 @@
             <% if (reviewResult === 'submitted') { %><div class="alert alert-success" role="status">Your review was added.</div><% } %>
             <% if (reviewResult === 'duplicate') { %><div class="alert alert-info" role="status">You have already reviewed this home.</div><% } %>
             <% if (reviewResult === 'invalid') { %><div class="alert alert-warning" role="status">Choose a rating and enter a comment of 2 to 1,000 characters.</div><% } %>
+            <% if (reviewResult === 'limit') { %><div class="alert alert-info" role="status">This home has reached its review limit.</div><% } %>
 
-            <% if (reviewEligible && !reviewed) { %>
+            <% if (reviewEligible && !reviewed && property.reviews.length < 50) { %>
                 <form class="glass-card p-4 mb-4" method="POST" action="/property/<%= property._id %>/reviews">
                     <div class="row g-3 align-items-end">
                         <div class="col-sm-4 col-md-3">

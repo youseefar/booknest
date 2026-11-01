@@ -6,7 +6,7 @@ const { requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/property/:id/inquiries', requireRole('student'), async (req, res) => {
+router.post('/property/:id/inquiries', requireRole('student'), async (req, res, next) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
 
     const message = String(req.body.message || '').trim();
@@ -29,12 +29,11 @@ router.post('/property/:id/inquiries', requireRole('student'), async (req, res) 
         return res.redirect(`/property/${property._id}?inquiry=submitted`);
     } catch (error) {
         if (error.code === 11000) return res.redirect(`/property/${req.params.id}?inquiry=exists`);
-        console.error('Property sale inquiry submission failed:', error.message);
-        return res.status(500).send('Unable to send your inquiry right now.');
+        return next(error);
     }
 });
 
-router.get('/sales-inquiries', requireRole('landlord'), async (req, res) => {
+router.get('/sales-inquiries', requireRole('landlord'), async (req, res, next) => {
     try {
         const properties = await Property.find({ landlordId: req.user._id, listingType: 'sale' }).select('_id');
         const inquiries = await PropertyInquiry.find({ propertyId: { $in: properties.map(property => property._id) } })
@@ -43,20 +42,18 @@ router.get('/sales-inquiries', requireRole('landlord'), async (req, res) => {
             .sort({ timestamp: -1 });
         return res.render('property-inquiries', { inquiries, user: req.user, sellerView: true });
     } catch (error) {
-        console.error('Seller property inquiries could not be loaded:', error.message);
-        return res.status(500).send('Unable to load your sale inquiries.');
+        return next(error);
     }
 });
 
-router.get('/my-property-inquiries', requireRole('student'), async (req, res) => {
+router.get('/my-property-inquiries', requireRole('student'), async (req, res, next) => {
     try {
         const inquiries = await PropertyInquiry.find({ buyerId: req.user._id })
             .populate({ path: 'propertyId', populate: { path: 'landlordId', select: 'name email phone' } })
             .sort({ timestamp: -1 });
         return res.render('property-inquiries', { inquiries, user: req.user, sellerView: false });
     } catch (error) {
-        console.error('Buyer property inquiries could not be loaded:', error.message);
-        return res.status(500).send('Unable to load your sale inquiries.');
+        return next(error);
     }
 });
 

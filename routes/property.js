@@ -1,24 +1,13 @@
 const express = require('express');
-const multer = require('multer');
 const Property = require('../models/Property');
 const Booking = require('../models/Booking');
 const PropertyInquiry = require('../models/PropertyInquiry');
 const mongoose = require('mongoose');
-const { uploadPropertyVideo } = require('../services/cloudinary');
-const { requireAuth, requireRole } = require('../middleware/auth');
+const { requireRole } = require('../middleware/auth');
 const router = express.Router();
 
-const videoUpload = multer({
-    storage: multer.memoryStorage(),
-    fileFilter: (req, file, cb) => {
-        if (['video/mp4', 'video/quicktime', 'video/webm'].includes(file.mimetype)) return cb(null, true);
-        cb(new Error('Property videos must be MP4, MOV, or WEBM files.'));
-    },
-    limits: { files: 1, fileSize: 50 * 1024 * 1024 }
-}).single('video');
-
 // View all properties
-router.get('/properties', async (req, res) => {
+router.get('/properties', async (req, res, next) => {
     try {
         await Booking.syncExpiredSubscriptions();
         const search = String(req.query.q || '').trim();
@@ -54,12 +43,12 @@ router.get('/properties', async (req, res) => {
             .populate('landlordId', 'name phone email');
         res.render('properties', { properties, user: req.user, search, listingType });
     } catch (err) {
-        res.status(500).send(err.message);
+        return next(err);
     }
 });
 
 // View single property
-router.get('/property/:id', async (req, res) => {
+router.get('/property/:id', async (req, res, next) => {
     try {
         if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found');
         await Booking.syncExpiredSubscriptions();
@@ -94,7 +83,7 @@ router.get('/property/:id', async (req, res) => {
                 && property.landlordId.payoutSubaccountMode === req.app.locals.paystackMode
         });
     } catch (err) {
-        res.status(500).send(err.message);
+        return next(err);
     }
 });
 
@@ -107,7 +96,7 @@ router.get('/add-property', requireRole('landlord'), (req, res) => {
 });
 
 // Landlord inventory for the dashboard
-router.get('/my-properties', requireRole('landlord'), async (req, res) => {
+router.get('/my-properties', requireRole('landlord'), async (req, res, next) => {
     if (req.user.role !== 'landlord') {
         return res.status(403).send('Only landlords can view their properties');
     }
@@ -116,12 +105,12 @@ router.get('/my-properties', requireRole('landlord'), async (req, res) => {
         const properties = await Property.find({ landlordId: req.user._id }).sort({ createdAt: -1 });
         res.render('properties', { properties, user: req.user, landlordView: true, search: '', listingType: '' });
     } catch (err) {
-        res.status(500).send(err.message);
+        return next(err);
     }
 });
 
 // Add property post
-router.post('/add-property', requireRole('landlord'), videoUpload, async (req, res) => {
+router.post('/add-property', requireRole('landlord'), async (req, res, next) => {
     try {
         if (req.user.role !== 'landlord') {
             return res.status(403).send('Only landlords can add properties');
@@ -133,12 +122,14 @@ router.post('/add-property', requireRole('landlord'), videoUpload, async (req, r
         const cleanDescription = String(description || '').trim();
         const cleanLocation = String(location || '').trim();
         const cleanAddress = String(address || '').trim();
+        const cleanAmenities = String(amenities || '').split(',').map(a => a.trim()).filter(Boolean);
         const numericPrice = Number(price);
-        if (!cleanTitle || !cleanDescription || !cleanLocation || !cleanAddress || !['rent', 'sale'].includes(listingType) || !Number.isFinite(numericPrice) || numericPrice <= 0) {
+        if (!cleanTitle || cleanTitle.length > 120 || !cleanDescription || cleanDescription.length > 3000
+            || !cleanLocation || cleanLocation.length > 120 || !cleanAddress || cleanAddress.length > 240
+            || cleanAmenities.length > 20 || cleanAmenities.some(amenity => amenity.length > 80)
+            || !['rent', 'sale'].includes(listingType) || !Number.isFinite(numericPrice) || numericPrice <= 0) {
             return res.status(400).render('add-property', { user: req.user, message: 'Please complete every field with valid information.' });
         }
-        const uploadedVideo = req.file ? await uploadPropertyVideo(req.file.buffer) : null;
-
         const newProperty = new Property({
             title: cleanTitle,
             description: cleanDescription,
@@ -146,16 +137,14 @@ router.post('/add-property', requireRole('landlord'), videoUpload, async (req, r
             listingType,
             location: cleanLocation,
             address: cleanAddress,
-            amenities: String(amenities || '').split(',').map(a => a.trim()).filter(Boolean),
-            videoUrl: uploadedVideo?.videoUrl || '',
-            videoPosterUrl: uploadedVideo?.videoPosterUrl || '',
+            amenities: cleanAmenities,
             landlordId: req.user._id
         });
 
         await newProperty.save();
         res.redirect('/dashboard');
     } catch (err) {
-        res.status(500).send(err.message);
+        return next(err);
     }
 });
 
@@ -164,21 +153,35 @@ router.get('/property/:id/edit', requireRole('landlord'), async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found');
     const property = await Property.findOne({ _id: req.params.id, landlordId: req.user._id });
     if (!property) return res.status(404).send('Property not found');
+    if (property.paymentReservationBookingId) {
+        return res.status(409).send('This property has an active payment and cannot be changed until checkout finishes.');
+    }
     res.render('edit-property', { property, user: req.user });
 });
 
-router.post('/property/:id/edit', requireRole('landlord'), videoUpload, async (req, res) => {
+router.post('/property/:id/edit', requireRole('landlord'), async (req, res, next) => {
     try {
         if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found');
         const { title, description, price, location, address, amenities } = req.body;
         const listingType = String(req.body.listingType || '');
         const numericPrice = Number(price);
-        if (!String(title || '').trim() || !String(description || '').trim() || !String(location || '').trim() || !String(address || '').trim() || !['rent', 'sale'].includes(listingType) || !Number.isFinite(numericPrice) || numericPrice <= 0) {
+        const cleanTitle = String(title || '').trim();
+        const cleanDescription = String(description || '').trim();
+        const cleanLocation = String(location || '').trim();
+        const cleanAddress = String(address || '').trim();
+        const cleanAmenities = String(amenities || '').split(',').map(a => a.trim()).filter(Boolean);
+        if (!cleanTitle || cleanTitle.length > 120 || !cleanDescription || cleanDescription.length > 3000
+            || !cleanLocation || cleanLocation.length > 120 || !cleanAddress || cleanAddress.length > 240
+            || cleanAmenities.length > 20 || cleanAmenities.some(amenity => amenity.length > 80)
+            || !['rent', 'sale'].includes(listingType) || !Number.isFinite(numericPrice) || numericPrice <= 0) {
             return res.status(400).send('Please provide valid property details.');
         }
 
         const existingProperty = await Property.findOne({ _id: req.params.id, landlordId: req.user._id });
         if (!existingProperty) return res.status(404).send('Property not found');
+        if (existingProperty.paymentReservationBookingId) {
+            return res.status(409).send('This property has an active payment and cannot be changed until checkout finishes.');
+        }
         if (existingProperty.listingType !== listingType) {
             if (existingProperty.status !== 'available'
                 || await Booking.exists({ propertyId: existingProperty._id })
@@ -187,23 +190,19 @@ router.post('/property/:id/edit', requireRole('landlord'), videoUpload, async (r
             }
         }
 
-        const uploadedVideo = req.file ? await uploadPropertyVideo(req.file.buffer) : null;
-        const videoUrl = uploadedVideo?.videoUrl || existingProperty.videoUrl;
-        const videoPosterUrl = uploadedVideo?.videoPosterUrl || existingProperty.videoPosterUrl;
-
         const property = await Property.findOneAndUpdate(
             { _id: req.params.id, landlordId: req.user._id },
-            { title: title.trim(), description: description.trim(), price: numericPrice, listingType, location: location.trim(), address: address.trim(), amenities: String(amenities || '').split(',').map(a => a.trim()).filter(Boolean), videoUrl, videoPosterUrl, verificationStatus: 'pending' },
+            { title: cleanTitle, description: cleanDescription, price: numericPrice, listingType, location: cleanLocation, address: cleanAddress, amenities: cleanAmenities, verificationStatus: 'pending' },
             { new: true, runValidators: true }
         );
         if (!property) return res.status(404).send('Property not found');
         res.redirect('/dashboard');
     } catch (err) {
-        res.status(500).send('Unable to update this property.');
+        return next(err);
     }
 });
 
-router.post('/property/:id/reviews', requireRole('student'), async (req, res) => {
+router.post('/property/:id/reviews', requireRole('student'), async (req, res, next) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
     const rating = Number(req.body.rating);
     const comment = String(req.body.comment || '').trim();
@@ -218,13 +217,14 @@ router.post('/property/:id/reviews', requireRole('student'), async (req, res) =>
         if (!hasPaidBooking) return res.status(403).send('Only students with a paid booking can review this property.');
 
         const result = await Property.updateOne(
-            { _id: req.params.id, 'reviews.userId': { $ne: req.user._id } },
+            { _id: req.params.id, 'reviews.userId': { $ne: req.user._id }, 'reviews.49': { $exists: false } },
             { $push: { reviews: { userId: req.user._id, rating, comment } } }
         );
-        return res.redirect(`/property/${req.params.id}?review=${result.modifiedCount ? 'submitted' : 'duplicate'}`);
+        if (result.modifiedCount) return res.redirect(`/property/${req.params.id}?review=submitted`);
+        const currentProperty = await Property.findById(req.params.id).select('reviews.userId');
+        return res.redirect(`/property/${req.params.id}?review=${currentProperty?.reviews.length >= 50 ? 'limit' : 'duplicate'}`);
     } catch (error) {
-        console.error('Property review submission failed:', error.message);
-        return res.status(500).send('Unable to submit your review right now.');
+        return next(error);
     }
 });
 
@@ -232,17 +232,28 @@ router.post('/property/:id/status', requireRole('landlord'), async (req, res) =>
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
     const property = await Property.findOne({ _id: req.params.id, landlordId: req.user._id });
     if (!property) return res.status(404).send('Property not found');
+    if (property.paymentReservationBookingId) {
+        return res.status(409).send('This property has an active payment and cannot be changed until checkout finishes.');
+    }
     const allowedStatuses = property.listingType === 'sale'
         ? ['available', 'sold', 'maintenance']
         : ['available', 'rented', 'maintenance'];
     if (!allowedStatuses.includes(req.body.status)) return res.status(400).send('Invalid property status.');
-    property.status = req.body.status;
-    await property.save();
+    const updatedProperty = await Property.findOneAndUpdate(
+        {
+            _id: property._id,
+            landlordId: req.user._id,
+            $or: [{ paymentReservationBookingId: null }, { paymentReservationBookingId: { $exists: false } }]
+        },
+        { $set: { status: req.body.status } },
+        { runValidators: true }
+    );
+    if (!updatedProperty) return res.status(409).send('This property has an active payment and cannot be changed until checkout finishes.');
     res.redirect('/dashboard');
 });
 
 // Submit booking request
-router.post('/book-property/:id', requireRole('student'), async (req, res) => {
+router.post('/book-property/:id', requireRole('student'), async (req, res, next) => {
     try {
         if (req.user.role !== 'student') {
             return res.status(403).send('Only students can book properties');
@@ -264,7 +275,7 @@ router.post('/book-property/:id', requireRole('student'), async (req, res) => {
         res.redirect(`/property/${req.params.id}`);
     } catch (err) {
         if (err.code === 11000) return res.status(400).send('You already have a booking request for this property.');
-        res.status(500).send('Unable to submit your booking request.');
+        return next(err);
     }
 });
 

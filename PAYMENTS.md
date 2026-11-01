@@ -4,11 +4,11 @@ The app uses Paystack-hosted checkout and split payments. A student can pay the 
 
 ## Configure
 
-1. For local development, use `PAYSTACK_MODE=test` and a Paystack test secret beginning with `sk_test_`. Test mode is the default outside production.
-2. To intentionally use a live key during local development, set `PAYSTACK_MODE=live` and provide a live secret beginning with `sk_live_`. This can charge real money; use a controlled transaction and never commit the key.
-3. For production, set `NODE_ENV=production`, `PAYSTACK_MODE=live`, and configure the live secret as `PAYSTACK_SECRET_KEY` in the hosting provider's environment settings.
-4. Set `APP_URL` to the app's public HTTPS URL in production. For local testing, use `http://localhost:5000` and keep the browser on that same machine.
-5. Configure `MONGODB_URI` and a strong `SESSION_SECRET` in the host environment, then restart/redeploy.
+1. Local development always uses test mode and requires a Paystack test secret beginning with `sk_test_`. A live key cannot be enabled outside production.
+2. For production, set `NODE_ENV=production`, `PAYSTACK_MODE=live`, and configure the live secret beginning with `sk_live_` as `PAYSTACK_SECRET_KEY` in the hosting provider's environment settings.
+3. Set `APP_URL` to the app's public HTTPS URL in production. For local testing, use `http://localhost:5000` and keep the browser on that same machine.
+4. Configure `MONGODB_URI` and a random `SESSION_SECRET` of at least 32 characters in the host environment, then restart/redeploy.
+5. In the Paystack dashboard, configure the webhook URL as `https://<your-app>/payments/paystack/webhook`. The app validates Paystack's HMAC SHA512 signature over the raw request body and independently verifies successful transactions before recording them.
 
 Never commit `.env` or paste secret keys into chat. `.env.example` contains placeholders only.
 
@@ -23,13 +23,15 @@ Test and live subaccounts are separate. A landlord must set up the payout accoun
 
 The platform share is 1% of the transaction amount. Paystack transaction fees are assigned to the landlord's 99% share; Paystack may still apply settlement timing, account verification, or other account-level requirements. Split settlement is handled by Paystack and is not necessarily an instant bank transfer.
 
+Each listing is atomically reserved while a checkout is active, so two renters cannot start payment for the same home at once. After a reservation expires, the app verifies the old Paystack reference and only releases the listing when that transaction is terminal. If Paystack still reports a pending transaction, checkout stays blocked to prevent a second charge.
+
 ## Admin balance withdrawals
 
 The admin dashboard reads the platform's available NGN balance from Paystack. This is not the gross value of all payments: landlord shares are settled to landlord subaccounts, and only the platform share is held in the platform balance. Admins can verify a bank account and request a transfer up to the currently available balance. Paystack may require an OTP or additional transfer permissions. The app stores the Paystack transfer-recipient code and masked bank details, not the full account number.
 
-## Property videos
+## Low-storage media policy
 
-Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` in the host environment. New property videos are uploaded to Cloudinary; MongoDB stores the optimized video URL and a 640x360 poster URL. Listing cards load only the poster, and the native video player requests video data only after a visitor presses play. Cloudinary automatically selects a delivery format and compression quality. Uploads accept one MP4, MOV, or WEBM video up to 50 MB. Existing photo-backed listings remain viewable.
+The app does not accept property video or image uploads, avoiding media-hosting charges and large uploads. Existing static assets and listing image URLs remain supported. Property listing fields have size limits, and each listing accepts at most 20 short amenity labels. Older video links may remain in MongoDB for compatibility but are no longer requested by the app.
 
 ## Test before launch
 

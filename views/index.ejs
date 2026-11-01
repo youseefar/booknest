@@ -88,9 +88,7 @@
                             <a href="<%= property.isPlaceholder ? '/properties' : '/property/' + property._id %>" class="property-link-card">
                                 <article class="airbnb-card">
                                     <div class="airbnb-image-wrap">
-                                        <% if (property.videoPosterUrl) { %>
-                                            <img class="w-100 h-100 object-fit-cover" src="<%= property.videoPosterUrl %>" alt="Preview of <%= property.title %>" loading="lazy">
-                                        <% } else if (property.images && property.images.length) { %>
+                                        <% if (property.images && property.images.length) { %>
                                             <img src="<%= property.images[0] %>" alt="<%= property.title %>">
                                         <% } else { %>
                                             <div class="airbnb-placeholder">

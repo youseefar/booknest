@@ -5,14 +5,16 @@ const userSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
-        trim: true
+        trim: true,
+        maxlength: 100
     },
     email: {
         type: String,
         required: true,
         unique: true,
         lowercase: true,
-        trim: true
+        trim: true,
+        maxlength: 254
     },
     password: {
         type: String,
@@ -21,7 +23,8 @@ const userSchema = new mongoose.Schema({
     },
     phone: {
         type: String,
-        default: ''
+        default: '',
+        maxlength: 24
     },
     role: {
         type: String,
@@ -31,6 +34,16 @@ const userSchema = new mongoose.Schema({
     isVerified: {
         type: Boolean,
         default: false
+    },
+    passwordResetToken: {
+        type: String,
+        select: false,
+        default: undefined
+    },
+    passwordResetExpires: {
+        type: Date,
+        select: false,
+        default: undefined
     },
     payoutSubaccountCode: {
         type: String,
@@ -70,5 +83,8 @@ userSchema.pre('save', async function () {
     const salt = await bcryptjs.genSalt(10);
     this.password = await bcryptjs.hash(this.password, salt);
 });
+
+userSchema.index({ role: 1, createdAt: -1 });
+userSchema.index({ passwordResetToken: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('User', userSchema);

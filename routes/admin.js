@@ -10,7 +10,7 @@ const { requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.get('/admin', requireRole('admin'), async (req, res) => {
+router.get('/admin', requireRole('admin'), async (req, res, next) => {
     try {
         req.session.adminPayoutCsrfToken = crypto.randomBytes(32).toString('hex');
         const adminCsrfToken = req.session.adminPayoutCsrfToken;
@@ -77,19 +77,30 @@ router.get('/admin', requireRole('admin'), async (req, res) => {
             payoutMessage: req.query.payout
         });
     } catch (err) {
-        res.status(500).send('Unable to load the moderation dashboard.');
+        return next(err);
     }
 });
 
 router.post('/admin/properties/:id/verification', requireRole('admin'), async (req, res) => {
     const allowed = ['pending', 'verified', 'rejected'];
     if (!allowed.includes(req.body.status)) return res.status(400).send('Invalid verification status.');
-    const property = await Property.findByIdAndUpdate(req.params.id, { verificationStatus: req.body.status }, { new: true });
-    if (!property) return res.status(404).send('Property not found.');
+    const property = await Property.findOneAndUpdate(
+        {
+            _id: req.params.id,
+            $or: [{ paymentReservationBookingId: null }, { paymentReservationBookingId: { $exists: false } }]
+        },
+        { $set: { verificationStatus: req.body.status } },
+        { new: true }
+    );
+    if (!property) {
+        const exists = await Property.exists({ _id: req.params.id });
+        if (!exists) return res.status(404).send('Property not found.');
+        return res.status(409).send('This property has an active payment and cannot be changed until checkout finishes.');
+    }
     res.redirect('/admin');
 });
 
-router.post('/admin/properties/:id/manage', requireRole('admin'), async (req, res) => {
+router.post('/admin/properties/:id/manage', requireRole('admin'), async (req, res, next) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
 
     const allowedStatuses = ['available', 'rented', 'sold', 'maintenance'];
@@ -117,19 +128,33 @@ router.post('/admin/properties/:id/manage', requireRole('admin'), async (req, re
             if (activeStay) return res.redirect('/admin?message=active-stay');
         }
 
-        property.status = req.body.status;
-        property.verificationStatus = req.body.verificationStatus;
-        await property.save();
+        const updatedProperty = await Property.findOneAndUpdate(
+            {
+                _id: property._id,
+                $or: [{ paymentReservationBookingId: null }, { paymentReservationBookingId: { $exists: false } }]
+            },
+            { $set: { status: req.body.status, verificationStatus: req.body.verificationStatus } },
+            { runValidators: true }
+        );
+        if (!updatedProperty) {
+            return res.status(409).send('This property has an active payment and cannot be changed until checkout finishes.');
+        }
         return res.redirect('/admin?message=listing-updated');
     } catch (error) {
-        console.error('Admin listing update failed:', error.message);
-        return res.status(500).send('Unable to update this listing right now.');
+        return next(error);
     }
 });
 
 router.post('/admin/properties/:id/delete', requireRole('admin'), async (req, res) => {
-    const property = await Property.findByIdAndDelete(req.params.id);
-    if (!property) return res.status(404).send('Property not found.');
+    const property = await Property.findOneAndDelete({
+        _id: req.params.id,
+        $or: [{ paymentReservationBookingId: null }, { paymentReservationBookingId: { $exists: false } }]
+    });
+    if (!property) {
+        const exists = await Property.exists({ _id: req.params.id });
+        if (!exists) return res.status(404).send('Property not found.');
+        return res.status(409).send('This property has an active payment and cannot be deleted until checkout finishes.');
+    }
     await Booking.deleteMany({ propertyId: property._id });
     await PropertyInquiry.deleteMany({ propertyId: property._id });
     res.redirect('/admin');
@@ -144,6 +169,10 @@ router.post('/admin/users/:id/delete', requireRole('admin'), async (req, res) =>
 
     const ownedProperties = await Property.find({ landlordId: targetUser._id }).select('_id');
     const propertyIds = ownedProperties.map(property => property._id);
+    if (await Property.exists({ landlordId: targetUser._id, paymentReservationBookingId: { $ne: null } })
+        || await Booking.exists({ studentId: targetUser._id, paymentStatus: 'pending' })) {
+        return res.status(409).send('This account has an active payment and cannot be deleted until checkout finishes.');
+    }
     await Booking.deleteMany({ $or: [{ studentId: targetUser._id }, { propertyId: { $in: propertyIds } }] });
     await PropertyInquiry.deleteMany({ $or: [{ buyerId: targetUser._id }, { propertyId: { $in: propertyIds } }] });
     await Property.deleteMany({ landlordId: targetUser._id });

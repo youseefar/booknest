@@ -99,15 +99,19 @@ router.post('/register', async (req, res, next) => {
 
     return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
   } catch (err) {
-    const fallbackRole = String(req.body.role || 'student').trim();
-    const role = ['student', 'landlord'].includes(fallbackRole) ? fallbackRole : 'student';
-    res.status(500).render(role === 'landlord' ? 'register-landlord' : 'register', {
-      message: err.message,
-      mode: role === 'landlord' ? 'landlord' : 'student',
-      role,
-      pageTitle: role === 'landlord' ? 'Landlord Registration' : 'Register',
-      returnTo
-    });
+    if (err.code === 11000) {
+      const requestedRole = String(req.body.role || 'student').trim();
+      const role = ['student', 'landlord'].includes(requestedRole) ? requestedRole : 'student';
+      const isLandlord = role === 'landlord';
+      return res.status(400).render(isLandlord ? 'register-landlord' : 'register', {
+        message: 'Email already registered.',
+        mode: isLandlord ? 'landlord' : 'student',
+        role,
+        pageTitle: isLandlord ? 'Property Owner Registration' : 'Register',
+        returnTo: getPropertyReturnPath(req.body.returnTo)
+      });
+    }
+    return next(err);
   }
 });
 
@@ -122,7 +126,7 @@ router.get('/forgot-password', (req, res) => {
 });
 
 // Create a short-lived password reset token. The response stays generic to avoid exposing account existence.
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', async (req, res, next) => {
   const emailValue = String(req.body.email || '').trim().toLowerCase();
   const response = { message: 'If an account uses that email, password reset instructions have been created.' };
 
@@ -136,11 +140,10 @@ router.post('/forgot-password', async (req, res) => {
       if (process.env.NODE_ENV !== 'production') {
         response.resetLink = `/reset-password/${rawToken}`;
       }
-      console.log(`Password reset link for ${user.email}: /reset-password/${rawToken}`);
     }
     res.render('forgot-password', response);
   } catch (err) {
-    res.status(500).render('forgot-password', { message: 'Unable to create a reset request right now.' });
+    return next(err);
   }
 });
 
@@ -177,7 +180,7 @@ router.get('/profile', requireAuth, (req, res) => {
 });
 
 // Update profile details
-router.post('/profile', requireAuth, async (req, res) => {
+router.post('/profile', requireAuth, async (req, res, next) => {
   try {
     const nameValue = String(req.body.name || '').trim();
     const emailValue = String(req.body.email || '').trim().toLowerCase();
@@ -193,7 +196,7 @@ router.post('/profile', requireAuth, async (req, res) => {
     await req.user.save();
     res.render('profile', { user: req.user, success: 'Profile details updated successfully.' });
   } catch (err) {
-    res.status(500).render('profile', { user: req.user, message: 'Unable to update your profile right now.' });
+    return next(err);
   }
 });
 
@@ -226,7 +229,7 @@ router.post('/login', (req, res, next) => {
 });
 
 // Dashboard
-router.get('/dashboard', (req, res) => {
+router.get('/dashboard', (req, res, next) => {
   if (!req.user) return res.redirect('/login');
   if (req.user.role === 'admin') return res.redirect('/admin');
 
@@ -249,13 +252,13 @@ router.get('/dashboard', (req, res) => {
         ]);
         return res.render('dashboard', { user: req.user, properties, bookings, propertyInquiries });
       })
-      .catch(err => res.status(500).send(err.message));
+      .catch(next);
   }
 
   return Booking.syncExpiredSubscriptions()
     .then(() => Promise.all([
       Booking.find({ studentId: req.user._id })
-        .populate('propertyId', 'title location price images videoUrl videoPosterUrl status listingType')
+        .populate('propertyId', 'title location price images status listingType')
         .sort({ timestamp: -1 }),
       PropertyInquiry.find({ buyerId: req.user._id })
         .populate('propertyId', 'title location price status listingType')
@@ -268,13 +271,13 @@ router.get('/dashboard', (req, res) => {
       propertyInquiries,
       bookingResult: req.query.booking
     }))
-    .catch(err => res.status(500).send(err.message));
+    .catch(next);
 });
 
 // Logout
-router.get('/logout', (req, res) => {
+router.get('/logout', (req, res, next) => {
   req.logout((err) => {
-    if (err) return res.send(err);
+    if (err) return next(err);
     res.redirect('/');
   });
 });

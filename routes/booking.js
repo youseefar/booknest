@@ -34,7 +34,7 @@ const renderBookings = async (req, res, landlordView) => {
             receiptReference: String(req.query.reference || '').slice(0, 100)
         });
     } catch (err) {
-        res.status(500).send(landlordView ? 'Unable to load bookings.' : 'Unable to load your bookings.');
+        throw err;
     }
 };
 

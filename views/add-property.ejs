@@ -38,10 +38,10 @@
                         <div class="alert alert-warning"><%= message %></div>
                     <% } %>
 
-                    <form method="POST" action="/add-property" enctype="multipart/form-data" class="row g-3">
+                    <form method="POST" action="/add-property" class="row g-3">
                         <div class="col-md-12">
                             <label class="form-label" for="title">Property title</label>
-                            <input class="form-control" id="title" type="text" name="title" placeholder="e.g. Spacious family home" required>
+                            <input class="form-control" id="title" type="text" name="title" maxlength="120" placeholder="e.g. Spacious family home" required>
                         </div>
 
                         <div class="col-md-6">
@@ -54,7 +54,7 @@
 
                         <div class="col-12">
                             <label class="form-label" for="description">Description</label>
-                            <textarea class="form-control" id="description" name="description" rows="5" placeholder="Describe the property and what makes it special." required></textarea>
+                            <textarea class="form-control" id="description" name="description" rows="5" maxlength="3000" placeholder="Describe the property and what makes it special." required></textarea>
                         </div>
 
                         <div class="col-md-6">
@@ -64,23 +64,17 @@
 
                         <div class="col-md-6">
                             <label class="form-label" for="location">Area / location</label>
-                            <input class="form-control" id="location" type="text" name="location" placeholder="Area or neighborhood" required>
+                            <input class="form-control" id="location" type="text" name="location" maxlength="120" placeholder="Area or neighborhood" required>
                         </div>
 
                         <div class="col-12">
                             <label class="form-label" for="address">Street address</label>
-                            <input class="form-control" id="address" type="text" name="address" placeholder="Street address" required>
+                            <input class="form-control" id="address" type="text" name="address" maxlength="240" placeholder="Street address" required>
                         </div>
 
                         <div class="col-12">
                             <label class="form-label" for="amenities">Amenities <span class="text-muted">(optional)</span></label>
                             <input class="form-control" id="amenities" type="text" name="amenities" placeholder="WiFi, water, parking, generator (optional)">
-                        </div>
-
-                        <div class="col-12">
-                            <label class="form-label" for="video">Property video</label>
-                            <input class="form-control" id="video" type="file" name="video" accept="video/mp4,video/quicktime,video/webm">
-                            <div class="form-text">Upload one MP4, MOV, or WEBM video up to 50 MB. It will be stored on Cloudinary.</div>
                         </div>
 
                         <div class="col-12 d-grid gap-2 d-md-flex justify-content-md-between pt-3">

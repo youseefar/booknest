@@ -4,7 +4,16 @@ const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Property = require('../models/Property');
 const { requireRole } = require('../middleware/auth');
-const { PAYSTACK_API, getPaymentMode, getPaystackSecretKey, paystackConfigurationMessage, paystackRequest } = require('../services/paystack');
+const { isDatabaseError } = require('../services/database-errors');
+const {
+    PAYSTACK_API,
+    getPaymentMode,
+    getPaystackSecretKey,
+    isVerifiedPaystackTransaction,
+    paystackConfigurationMessage,
+    paystackRequest,
+    verifyWebhookSignature
+} = require('../services/paystack');
 
 const router = express.Router();
 
@@ -40,7 +49,7 @@ router.get('/payments/banks', requireRole('landlord', 'admin'), async (req, res)
                 .map(bank => ({ name: bank.name, code: bank.code }))
         });
     } catch (error) {
-        console.error('Paystack bank list failed:', error.message);
+        console.error('Paystack bank list failed:', error.name);
         return res.status(502).json({ message: 'Unable to load the bank list right now.' });
     }
 });
@@ -60,12 +69,12 @@ router.post('/payments/resolve-payout-account', requireRole('landlord', 'admin')
         if (!account?.account_name) return res.status(422).json({ message: 'Paystack could not verify this account.' });
         return res.json({ accountName: account.account_name });
     } catch (error) {
-        console.error('Payout account verification failed:', error.message);
+        console.error('Payout account verification failed:', error.name);
         return res.status(422).json({ message: 'Could not verify this account. Check the bank and account number.' });
     }
 });
 
-router.post('/payments/payout-account', requireRole('landlord'), async (req, res) => {
+router.post('/payments/payout-account', requireRole('landlord'), async (req, res, next) => {
     const secretKey = getPaystackSecretKey();
     if (!secretKey) {
         return res.status(503).render('profile', { user: req.user, message: paystackConfigurationMessage() });
@@ -117,12 +126,13 @@ router.post('/payments/payout-account', requireRole('landlord'), async (req, res
 
         return res.render('profile', { user: req.user, success: 'Your verified payout account is ready to receive rental payments.' });
     } catch (error) {
-        console.error('Payout account setup failed:', error.message);
+        if (isDatabaseError(error)) return next(error);
+        console.error('Payout account setup failed:', error.name);
         return res.status(502).render('profile', { user: req.user, message: 'Paystack could not save this payout account. Please try again.' });
     }
 });
 
-router.post('/payments/admin-payout-account', requireRole('admin'), async (req, res) => {
+router.post('/payments/admin-payout-account', requireRole('admin'), async (req, res, next) => {
     if (!verifyAdminPayoutToken(req, res)) return;
     const secretKey = getPaystackSecretKey();
     const accountNumber = String(req.body.accountNumber || '').trim();
@@ -157,7 +167,8 @@ router.post('/payments/admin-payout-account', requireRole('admin'), async (req, 
         await req.user.save();
         return res.redirect('/admin?payout=account-saved');
     } catch (error) {
-        console.error('Admin payout account setup failed:', error.message);
+        if (isDatabaseError(error)) return next(error);
+        console.error('Admin payout account setup failed:', error.name);
         return res.redirect('/admin?payout=error');
     }
 });
@@ -197,7 +208,7 @@ router.post('/payments/admin/withdraw', requireRole('admin'), async (req, res) =
         req.session.pendingAdminTransfer = null;
         return res.redirect('/admin?payout=sent');
     } catch (error) {
-        console.error('Admin balance withdrawal failed:', error.message);
+        console.error('Admin balance withdrawal failed:', error.name);
         return res.redirect('/admin?payout=error');
     }
 });
@@ -219,7 +230,7 @@ router.post('/payments/admin/withdraw/finalize', requireRole('admin'), async (re
         req.session.pendingAdminTransfer = null;
         return res.redirect('/admin?payout=complete');
     } catch (error) {
-        console.error('Admin transfer authorization failed:', error.message);
+        console.error('Admin transfer authorization failed:', error.name);
         return res.redirect('/admin?payout=error');
     }
 });
@@ -227,6 +238,138 @@ router.post('/payments/admin/withdraw/finalize', requireRole('admin'), async (re
 function getCallbackUrl(req) {
     const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
     return new URL('/payments/paystack/callback', baseUrl).toString();
+}
+
+const PAYMENT_RESERVATION_MS = 30 * 60 * 1000;
+const terminalPaymentStatuses = new Set(['failed', 'abandoned', 'reversed']);
+
+async function fetchVerifiedTransaction(reference, secretKey) {
+    return paystackRequest(`/transaction/verify/${encodeURIComponent(reference)}`, secretKey, { method: 'GET' });
+}
+
+async function recordVerifiedPayment(booking, reference, transaction) {
+    if (!isVerifiedPaystackTransaction(booking, reference, transaction)) return false;
+
+    if (booking.paymentStatus === 'paid' && booking.paymentReference === reference) {
+        const completedProperty = await Property.findOne({
+            _id: booking.propertyId?._id || booking.propertyId,
+            status: 'rented'
+        }).select('_id');
+        if (completedProperty) return true;
+    } else {
+        const reservation = await Property.exists({
+            _id: booking.propertyId?._id || booking.propertyId,
+            status: 'available',
+            paymentReservationBookingId: booking._id
+        });
+        if (!reservation) return false;
+
+        const paymentPaidAt = new Date();
+        const update = await Booking.updateOne(
+            {
+                _id: booking._id,
+                paymentReference: reference,
+                paymentAmountKobo: transaction.amount,
+                paymentStatus: 'pending'
+            },
+            {
+                $set: {
+                    status: 'approved',
+                    paymentStatus: 'paid',
+                    paymentPaidAt,
+                    subscriptionExpiresAt: Booking.addOneCalendarMonth(paymentPaidAt),
+                    paymentAuthorizationUrl: null
+                }
+            }
+        );
+        if (!update.modifiedCount) {
+            const currentBooking = await Booking.findById(booking._id).select('paymentStatus paymentReference');
+            if (currentBooking?.paymentStatus !== 'paid' || currentBooking.paymentReference !== reference) return false;
+        }
+    }
+
+    const propertyFilter = {
+        _id: booking.propertyId?._id || booking.propertyId,
+        status: 'available',
+        paymentReservationBookingId: booking._id
+    };
+    const propertyUpdate = await Property.updateOne(
+        propertyFilter,
+        { $set: { status: 'rented' }, $unset: { paymentReservationBookingId: 1, paymentReservationExpiresAt: 1 } }
+    );
+    if (propertyUpdate.modifiedCount) return true;
+
+    return Boolean(await Property.exists({
+        _id: propertyFilter._id,
+        status: 'rented'
+    }));
+}
+
+async function releaseExpiredReservation(property, secretKey) {
+    const reservedBookingId = property.paymentReservationBookingId;
+    if (!reservedBookingId) return true;
+
+    const reservedBooking = await Booking.findById(reservedBookingId)
+        .populate('studentId', 'email')
+        .populate('propertyId', 'status');
+    if (reservedBooking?.paymentStatus === 'pending' && reservedBooking.paymentReference) {
+        const transaction = await fetchVerifiedTransaction(reservedBooking.paymentReference, secretKey);
+        if (transaction.status === 'success') {
+            await recordVerifiedPayment(reservedBooking, reservedBooking.paymentReference, transaction);
+            return false;
+        }
+        if (!terminalPaymentStatuses.has(transaction.status)) return false;
+        await Booking.updateOne(
+            { _id: reservedBooking._id, paymentReference: reservedBooking.paymentReference, paymentStatus: 'pending' },
+            { $set: { paymentStatus: 'failed', paymentAuthorizationUrl: null } }
+        );
+    } else if (reservedBooking?.paymentStatus === 'paid' && reservedBooking.paymentReference) {
+        const transaction = await fetchVerifiedTransaction(reservedBooking.paymentReference, secretKey);
+        await recordVerifiedPayment(reservedBooking, reservedBooking.paymentReference, transaction);
+        return false;
+    }
+
+    const release = await Property.updateOne(
+        { _id: property._id, paymentReservationBookingId: reservedBookingId, status: 'available' },
+        { $unset: { paymentReservationBookingId: 1, paymentReservationExpiresAt: 1 } }
+    );
+    return Boolean(release.modifiedCount);
+}
+
+async function reservePropertyForCheckout(propertyId, booking, secretKey) {
+    const property = await Property.findById(propertyId).select('status verificationStatus listingType paymentReservationBookingId paymentReservationExpiresAt');
+    if (!property || property.status !== 'available' || property.verificationStatus !== 'verified' || property.listingType !== 'rent') {
+        return false;
+    }
+
+    const currentReservationId = property.paymentReservationBookingId;
+    if (currentReservationId && String(currentReservationId) !== String(booking._id)) {
+        if (!property.paymentReservationExpiresAt || property.paymentReservationExpiresAt > new Date()) return false;
+        if (!await releaseExpiredReservation(property, secretKey)) return false;
+    }
+
+    const reservationFilter = {
+        _id: property._id,
+        status: 'available',
+        verificationStatus: 'verified',
+        listingType: 'rent',
+        $or: [
+            { paymentReservationBookingId: null },
+            { paymentReservationBookingId: { $exists: false } },
+            { paymentReservationBookingId: booking._id }
+        ]
+    };
+    const reservation = await Property.findOneAndUpdate(
+        reservationFilter,
+        {
+            $set: {
+                paymentReservationBookingId: booking._id,
+                paymentReservationExpiresAt: new Date(Date.now() + PAYMENT_RESERVATION_MS)
+            }
+        },
+        { new: true }
+    ).select('_id');
+    return Boolean(reservation);
 }
 
 async function initializePaystackCheckout(req, res, booking, property, secretKey) {
@@ -256,6 +399,17 @@ async function initializePaystackCheckout(req, res, booking, property, secretKey
     if (booking.paymentStatus === 'paid' && !['expired', 'cancelled'].includes(booking.status)) {
         return res.redirect('/my-bookings?payment=already-paid');
     }
+    if (!await reservePropertyForCheckout(property._id, booking, secretKey)) {
+        return res.status(409).render('error', {
+            statusCode: 409,
+            title: 'This home is being checked out',
+            message: 'Another renter has an active payment for this home, or it is no longer available.',
+            detail: 'Your payment has not been started. Check your bookings or choose another home.',
+            backUrl: `/property/${property._id}`,
+            backLabel: 'Back to property',
+            user: req.user || null
+        });
+    }
     if (booking.paymentStatus === 'pending'
         && booking.paymentAuthorizationUrl
         && booking.paymentSubaccountCode === subaccountCode) {
@@ -282,7 +436,15 @@ async function initializePaystackCheckout(req, res, booking, property, secretKey
     booking.paymentAuthorizationUrl = null;
     booking.paymentPaidAt = null;
     booking.subscriptionExpiresAt = null;
-    await booking.save();
+    try {
+        await booking.save();
+    } catch (error) {
+        await Property.updateOne(
+            { _id: property._id, paymentReservationBookingId: booking._id },
+            { $unset: { paymentReservationBookingId: 1, paymentReservationExpiresAt: 1 } }
+        );
+        throw error;
+    }
 
     try {
         const response = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
@@ -307,23 +469,55 @@ async function initializePaystackCheckout(req, res, booking, property, secretKey
         const authorizationUrl = result?.data?.authorization_url;
 
         if (!response.ok || !result.status || !authorizationUrl || result.data.reference !== reference) {
-            booking.paymentStatus = 'failed';
-            await booking.save();
+            const failed = await Booking.updateOne(
+                { _id: booking._id, paymentReference: reference, paymentStatus: 'pending' },
+                { $set: { paymentStatus: 'failed', paymentAuthorizationUrl: null } }
+            );
+            if (failed.modifiedCount) {
+                await Property.updateOne(
+                    { _id: property._id, paymentReservationBookingId: booking._id },
+                    { $unset: { paymentReservationBookingId: 1, paymentReservationExpiresAt: 1 } }
+                );
+            }
+            const currentBooking = await Booking.findById(booking._id).select('paymentStatus paymentReference');
+            if (currentBooking?.paymentStatus === 'paid' && currentBooking.paymentReference === reference) {
+                return res.redirect(`/my-bookings?payment=success&reference=${encodeURIComponent(reference)}`);
+            }
             return res.status(502).send('Paystack could not start the payment. Please try again.');
         }
 
-        booking.paymentAuthorizationUrl = authorizationUrl;
-        await booking.save();
+        const authorizationUpdate = await Booking.updateOne(
+            { _id: booking._id, paymentReference: reference, paymentStatus: 'pending' },
+            { $set: { paymentAuthorizationUrl: authorizationUrl } }
+        );
+        if (!authorizationUpdate.modifiedCount) {
+            const currentBooking = await Booking.findById(booking._id).select('paymentStatus paymentReference');
+            if (currentBooking?.paymentStatus === 'paid' && currentBooking.paymentReference === reference) {
+                return res.redirect(`/my-bookings?payment=success&reference=${encodeURIComponent(reference)}`);
+            }
+            return res.status(409).send('This checkout is no longer active. Refresh your bookings before trying again.');
+        }
         return res.redirect(authorizationUrl);
     } catch (error) {
-        booking.paymentStatus = 'failed';
-        booking.paymentAuthorizationUrl = null;
-        await booking.save();
+        const failed = await Booking.updateOne(
+            { _id: booking._id, paymentReference: reference, paymentStatus: 'pending' },
+            { $set: { paymentStatus: 'failed', paymentAuthorizationUrl: null } }
+        );
+        if (failed.modifiedCount) {
+            await Property.updateOne(
+                { _id: property._id, paymentReservationBookingId: booking._id },
+                { $unset: { paymentReservationBookingId: 1, paymentReservationExpiresAt: 1 } }
+            );
+        }
+        const currentBooking = await Booking.findById(booking._id).select('paymentStatus paymentReference');
+        if (currentBooking?.paymentStatus === 'paid' && currentBooking.paymentReference === reference) {
+            return res.redirect(`/my-bookings?payment=success&reference=${encodeURIComponent(reference)}`);
+        }
         throw error;
     }
 }
 
-router.post('/payments/properties/:id/initialize', requireRole('student'), async (req, res) => {
+router.post('/payments/properties/:id/initialize', requireRole('student'), async (req, res, next) => {
     const secretKey = getPaystackSecretKey();
     if (!secretKey) {
         return res.status(503).send(paystackConfigurationMessage());
@@ -352,12 +546,11 @@ router.post('/payments/properties/:id/initialize', requireRole('student'), async
         return await initializePaystackCheckout(req, res, booking, property, secretKey);
     } catch (error) {
         if (error.code === 11000) return res.status(409).send('A checkout for this property is already being processed. Refresh your bookings to continue.');
-        console.error('Paystack initialization failed:', error.message);
-        return res.status(502).send('Unable to start the payment right now. Please try again.');
+        return next(error);
     }
 });
 
-router.post('/payments/bookings/:id/initialize', requireRole('student'), async (req, res) => {
+router.post('/payments/bookings/:id/initialize', requireRole('student'), async (req, res, next) => {
     const secretKey = getPaystackSecretKey();
     if (!secretKey) {
         return res.status(503).send(paystackConfigurationMessage());
@@ -373,12 +566,11 @@ router.post('/payments/bookings/:id/initialize', requireRole('student'), async (
         if (!booking.propertyId) return res.status(404).send('The property for this booking is unavailable.');
         return await initializePaystackCheckout(req, res, booking, booking.propertyId, secretKey);
     } catch (error) {
-        console.error('Paystack initialization failed:', error.message);
-        return res.status(502).send('Unable to start the payment right now. Please try again.');
+        return next(error);
     }
 });
 
-router.post('/payments/bookings/:id/cancel', requireRole('student'), async (req, res) => {
+router.post('/payments/bookings/:id/cancel', requireRole('student'), async (req, res, next) => {
     try {
         if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Booking not found.');
         const now = new Date();
@@ -409,12 +601,11 @@ router.post('/payments/bookings/:id/cancel', requireRole('student'), async (req,
 
         return res.redirect('/dashboard?booking=cancelled');
     } catch (error) {
-        console.error('Booking cancellation failed:', error.message);
-        return res.status(500).send('Unable to cancel this booking right now.');
+        return next(error);
     }
 });
 
-router.get('/payments/receipts/:reference', requireRole('student'), async (req, res) => {
+router.get('/payments/receipts/:reference', requireRole('student'), async (req, res, next) => {
     const reference = String(req.params.reference || '').trim();
     if (!reference || reference.length > 100) return res.status(404).render('error', {
         statusCode: 404,
@@ -476,20 +667,45 @@ router.get('/payments/receipts/:reference', requireRole('student'), async (req, 
 
         return res.render('receipt', { user: req.user, booking, receipt });
     } catch (error) {
-        console.error('Payment receipt lookup failed:', error.message);
-        return res.status(500).render('error', {
-            statusCode: 500,
-            title: 'Receipt unavailable',
-            message: 'We could not load this receipt right now.',
-            detail: 'Please return to My Bookings and try again.',
-            backUrl: '/my-bookings',
-            backLabel: 'Back to my bookings',
-            user: req.user
-        });
+        return next(error);
     }
 });
 
-router.get('/payments/paystack/callback', async (req, res) => {
+router.post('/payments/paystack/webhook', async (req, res) => {
+    const secretKey = getPaystackSecretKey();
+    const signature = String(req.get('x-paystack-signature') || '');
+    const rawBody = req.rawBody;
+    if (!secretKey || !rawBody || !/^[a-f\d]{128}$/i.test(signature)) return res.sendStatus(401);
+
+    if (!verifyWebhookSignature(rawBody, signature, secretKey)) return res.sendStatus(401);
+    if (req.body?.event !== 'charge.success') return res.sendStatus(200);
+
+    const reference = String(req.body?.data?.reference || '').trim();
+    if (!reference || reference.length > 100) return res.sendStatus(200);
+
+    try {
+        const booking = await Booking.findOne({ paymentReference: reference })
+            .populate('studentId', 'email')
+            .populate('propertyId', 'status');
+        if (!booking) return res.sendStatus(200);
+
+        const transaction = await fetchVerifiedTransaction(reference, secretKey);
+        const fulfilled = await recordVerifiedPayment(booking, reference, transaction);
+        if (!fulfilled) {
+            console.warn('Paystack webhook transaction could not be fulfilled:', { reference });
+            return res.status(503).json({ message: 'Payment is being reconciled.' });
+        }
+        return res.sendStatus(200);
+    } catch (error) {
+        console.error('Paystack webhook processing failed:', {
+            name: error.name,
+            code: error.code
+        });
+        return res.status(503).json({ message: 'Payment is being reconciled.' });
+    }
+});
+
+router.get('/payments/paystack/callback', async (req, res, next) => {
     const reference = String(req.query.reference || req.query.trxref || '').trim();
     const secretKey = getPaystackSecretKey();
     if (!reference || !secretKey) return res.redirect('/my-bookings?payment=verify');
@@ -511,46 +727,29 @@ router.get('/payments/paystack/callback', async (req, res) => {
         const transaction = result?.data;
         const validPayment = response.ok
             && result.status === true
-            && transaction?.status === 'success'
-            && transaction.reference === reference
-            && transaction.amount === booking.paymentAmountKobo
-            && transaction.currency === 'NGN'
-            && transaction.customer?.email?.toLowerCase() === booking.studentId?.email?.toLowerCase()
-            && String(transaction.metadata?.booking_id) === String(booking._id)
-            && String(transaction.metadata?.property_id) === String(booking.propertyId?._id);
+            && isVerifiedPaystackTransaction(booking, reference, transaction);
 
         if (!validPayment) {
-            if (response.ok && transaction && transaction.status !== 'success') {
+            if (response.ok && transaction && terminalPaymentStatuses.has(transaction.status)) {
                 await Booking.updateOne(
                     { _id: booking._id, paymentReference: reference, paymentStatus: 'pending' },
                     { $set: { paymentStatus: 'failed', paymentAuthorizationUrl: null } }
+                );
+                await Property.updateOne(
+                    { _id: booking.propertyId._id, paymentReservationBookingId: booking._id, status: 'available' },
+                    { $unset: { paymentReservationBookingId: 1, paymentReservationExpiresAt: 1 } }
                 );
                 return res.redirect('/my-bookings?payment=failed');
             }
             return res.redirect('/my-bookings?payment=verify');
         }
 
-        const paymentPaidAt = new Date();
-        await Booking.updateOne(
-            { _id: booking._id, paymentReference: reference, paymentAmountKobo: transaction.amount, paymentStatus: { $ne: 'paid' } },
-            { $set: {
-                status: 'approved',
-                paymentStatus: 'paid',
-                paymentPaidAt,
-                subscriptionExpiresAt: Booking.addOneCalendarMonth(paymentPaidAt),
-                paymentAuthorizationUrl: null
-            } }
-        );
-        const updatedBooking = await Booking.findById(booking._id).select('paymentStatus paymentReference');
-        if (updatedBooking?.paymentStatus === 'paid' && updatedBooking.paymentReference === reference) {
-            await Property.updateOne({ _id: booking.propertyId._id, status: 'available' }, { $set: { status: 'rented' } });
-        }
-        return updatedBooking?.paymentStatus === 'paid' && updatedBooking.paymentReference === reference
+        const fulfilled = await recordVerifiedPayment(booking, reference, transaction);
+        return fulfilled
             ? res.redirect(`/my-bookings?payment=success&reference=${encodeURIComponent(reference)}`)
             : res.redirect('/my-bookings?payment=verify');
     } catch (error) {
-        console.error('Paystack verification failed:', error.message);
-        return res.redirect('/my-bookings?payment=verify');
+        return next(error);
     }
 });
 

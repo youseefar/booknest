@@ -17,27 +17,28 @@ const legalRoutes = require('./routes/legal');
 const propertyInquiryRoutes = require('./routes/property-inquiry');
 const User = require('./models/User');
 const bcryptjs = require('bcryptjs');
-
-console.log('🔍 Environment variables loaded');
-console.log('📍 MongoDB URI:', process.env.MONGODB_URI ? 'Loaded' : 'NOT FOUND');
+const validateRequestBody = require('./middleware/validate-request-body');
 
 const app = express();
-const configuredPaystackMode = String(process.env.PAYSTACK_MODE || '').trim().toLowerCase();
-app.locals.paystackMode = ['test', 'live'].includes(configuredPaystackMode)
-  ? configuredPaystackMode
-  : process.env.NODE_ENV === 'production' ? 'live' : 'test';
-console.log('💳 Paystack mode:', app.locals.paystackMode);
+const { getPaymentMode } = require('./services/paystack');
+const { isDatabaseError, isStorageLimitError } = require('./services/database-errors');
+app.locals.paystackMode = getPaymentMode();
 mongoose.set('bufferCommands', false);
 app.set('trust proxy', 1);
 
-const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/futb-housing';
+const mongoUri = process.env.MONGODB_URI;
 
 // Middleware
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(express.urlencoded({ extended: true, limit: '20mb' }));
-app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+app.use(express.json({
+  limit: '1mb',
+  verify: (req, res, buffer) => {
+    if (req.path === '/payments/paystack/webhook') req.rawBody = Buffer.from(buffer);
+  }
+}));
+app.use(validateRequestBody);
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.set('view engine', 'ejs');
 
 app.get('/health', (req, res) => {
@@ -48,13 +49,74 @@ app.get('/health', (req, res) => {
   });
 });
 
-const requestLimiter = rateLimit({
+const isProduction = process.env.NODE_ENV === 'production';
+const limiterOptions = {
   windowMs: 15 * 60 * 1000,
-  limit: 300,
   standardHeaders: 'draft-8',
   legacyHeaders: false
+};
+const requestLimiter = rateLimit({
+  limit: 300,
+  ...limiterOptions
 });
 app.use(requestLimiter);
+app.use('/login', rateLimit({ ...limiterOptions, limit: 10 }));
+app.use('/register', rateLimit({ ...limiterOptions, limit: 5, windowMs: 60 * 60 * 1000 }));
+app.use('/forgot-password', rateLimit({ ...limiterOptions, limit: 5, windowMs: 60 * 60 * 1000 }));
+app.use('/reset-password', rateLimit({ ...limiterOptions, limit: 10 }));
+app.use('/payments', rateLimit({ ...limiterOptions, limit: 30 }));
+
+function containsUnsafeMongoKeys(value) {
+  if (!value || typeof value !== 'object') return false;
+  if (Array.isArray(value)) return value.some(containsUnsafeMongoKeys);
+  return Object.entries(value).some(([key, nestedValue]) =>
+    key.startsWith('$') || key.includes('.') || containsUnsafeMongoKeys(nestedValue)
+  );
+}
+
+app.use((req, res, next) => {
+  if (containsUnsafeMongoKeys(req.body) || containsUnsafeMongoKeys(req.query)) {
+    const error = new Error('Request contains unsupported field names.');
+    error.status = 400;
+    return next(error);
+  }
+  return next();
+});
+
+const configuredOrigins = new Set();
+for (const originValue of [process.env.APP_URL, process.env.FRONTEND_ORIGIN]) {
+  if (!originValue) continue;
+  try {
+    configuredOrigins.add(new URL(originValue).origin);
+  } catch {
+    throw new Error('APP_URL and FRONTEND_ORIGIN must be valid absolute URLs.');
+  }
+}
+
+app.use((req, res, next) => {
+  const origin = req.get('Origin');
+  if (!origin) return next();
+
+  let requestOrigin;
+  try {
+    requestOrigin = new URL(`${req.protocol}://${req.get('host')}`).origin;
+  } catch {
+    return res.sendStatus(400);
+  }
+
+  const allowed = origin === requestOrigin || configuredOrigins.has(origin);
+  if (!allowed) return res.sendStatus(403);
+
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Requested-With');
+    return res.sendStatus(204);
+  }
+  return next();
+});
 
 passport.use(new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
   try {
@@ -81,47 +143,39 @@ passport.deserializeUser(async (id, done) => {
 });
 
 const sessionOptions = {
-  secret: process.env.SESSION_SECRET || 'development-secret-change-me',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 14 * 24 * 60 * 60 * 1000
+    maxAge: 7 * 24 * 60 * 60 * 1000
   }
 };
 
-const createSessionMiddleware = store => session({ ...sessionOptions, store });
-let sessionMiddleware = createSessionMiddleware(new session.MemoryStore());
+let sessionMiddleware = null;
 
 function enableMongoSessionStore() {
+  if (sessionMiddleware || mongoose.connection.readyState !== 1) return;
   const mongoSessionStore = MongoStore.create({
     client: mongoose.connection.getClient(),
     collectionName: 'sessions',
-    ttl: 14 * 24 * 60 * 60
+    ttl: 7 * 24 * 60 * 60
   });
-  sessionMiddleware = createSessionMiddleware(mongoSessionStore);
+  mongoSessionStore.on('error', error => {
+    console.error('MongoDB session store error:', error.name);
+  });
+  sessionMiddleware = session({ ...sessionOptions, store: mongoSessionStore });
 }
 
 app.use((req, res, next) => {
   if (mongoose.connection.readyState === 1) return next();
-
-  const publicFallbackPaths = new Set(['/','/login','/register','/register/landlord','/forgot-password','/terms','/privacy-policy']);
-  const canRenderWithoutDatabase = req.method === 'GET'
-    && (publicFallbackPaths.has(req.path) || req.path.startsWith('/reset-password/'));
-
-  if (canRenderWithoutDatabase) {
-    req.databaseUnavailable = true;
-    req.user = null;
-    return next();
-  }
-
   return res.status(503).render('error', {
     statusCode: 503,
-    title: 'We are reconnecting',
-    message: 'Your account is safe, but sign-in is temporarily unavailable.',
-    detail: 'Please try again in a moment, or return to the home page.',
+    title: 'We are temporarily unavailable',
+    message: 'We cannot reach the database needed to load or save your information.',
+    detail: 'No successful save has been confirmed. Please try again later.',
     backUrl: '/',
     backLabel: 'Back to home',
     user: null
@@ -129,13 +183,16 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
-  if (req.databaseUnavailable) return next();
+  if (!sessionMiddleware) {
+    const error = new Error('The session store is not available.');
+    error.status = 503;
+    return next(error);
+  }
   return sessionMiddleware(req, res, next);
 });
 app.use(passport.initialize());
 const passportSession = passport.session();
 app.use((req, res, next) => {
-  if (req.databaseUnavailable) return next();
   return passportSession(req, res, next);
 });
 app.use('/', authRoutes);
@@ -147,7 +204,7 @@ app.use('/', legalRoutes);
 app.use('/', propertyInquiryRoutes);
 
 // Home page
-app.get('/', async (req, res) => {
+app.get('/', async (req, res, next) => {
   let properties = [];
 
   try {
@@ -157,8 +214,7 @@ app.get('/', async (req, res) => {
       .limit(12)
       .populate('landlordId', 'name');
   } catch (err) {
-    console.warn('⚠️ Unable to load homepage listings:', err.message);
-    properties = [];
+    return next(err);
   }
 
   res.render('index', { user: req.user, properties });
@@ -178,27 +234,40 @@ app.use((error, req, res, next) => {
   let message = statusCode === 404
     ? 'That page may have moved, or the address may be incorrect.'
     : 'We could not complete your request right now. Please try again.';
-  let detail = 'Your information is safe. You can return to the previous page or go back home.';
+  let detail = 'We could not confirm whether your request was saved. Check your account before retrying.';
   let backUrl = '/';
   let backLabel = 'Back to home';
   const isAddPropertyRequest = req.path === '/add-property';
   const isEditPropertyRequest = /^\/property\/[a-f\d]{24}\/edit$/i.test(req.path);
 
-  if (error.code === 'LIMIT_UNEXPECTED_FILE' || error.code === 'LIMIT_FILE_COUNT') {
+  const storageLimitReached = isStorageLimitError(error);
+  const databaseError = error.code !== 11000 && isDatabaseError(error);
+
+  if (storageLimitReached) {
+    statusCode = 503;
+    title = 'Database storage is at capacity';
+    message = 'We cannot save or load account information right now because the database has reached its storage limit.';
+    detail = 'Your request was not confirmed as saved. Check your account before retrying payment-related actions, then contact support if this continues.';
+  } else if (databaseError || mongoose.connection.readyState !== 1) {
+    statusCode = 503;
+    title = 'We are temporarily unavailable';
+    message = 'We could not complete your request because the database connection is interrupted.';
+    detail = 'Your request was not confirmed as saved. Please try again later.';
+  } else if (error.status === 413) {
+    statusCode = 413;
+    title = 'That request is too large';
+    message = 'Please reduce the amount of information submitted and try again.';
+    detail = 'The request was not processed.';
+  } else if (error.name === 'ValidationError' || error.name === 'CastError') {
     statusCode = 400;
-    title = 'Choose one property video';
-    message = 'Upload one video for each property.';
-    detail = 'Remove extra files from your selection, then try again.';
-  } else if (error.code === 'LIMIT_FILE_SIZE') {
-    statusCode = 400;
-    title = 'That video is too large';
-    message = 'The property video must be 50 MB or smaller.';
-    detail = 'Choose a smaller video, then try uploading again.';
-  } else if (error.message === 'Property videos must be MP4, MOV, or WEBM files.') {
-    statusCode = 400;
-    title = 'Choose a supported video';
-    message = 'Property videos must be MP4, MOV, or WEBM files.';
-    detail = 'Choose a video in one of those formats, then try again.';
+    title = 'Check the information you entered';
+    message = 'Some submitted information is not valid.';
+    detail = 'Review the form and try again.';
+  } else if (error.code === 11000) {
+    statusCode = 409;
+    title = 'That information is already in use';
+    message = 'We could not save this because a matching record already exists.';
+    detail = 'Check the existing account or request before trying again.';
   }
 
   if (isAddPropertyRequest || isEditPropertyRequest) {
@@ -209,7 +278,14 @@ app.use((error, req, res, next) => {
     backLabel = 'Back to dashboard';
   }
 
-  if (statusCode >= 500) console.error('Request failed:', error);
+  if (statusCode >= 500) {
+    console.error('Request failed:', {
+      name: error.name,
+      code: error.code,
+      message: databaseError || storageLimitReached ? 'Database operation failed.' : 'Request failed.',
+      path: req.path
+    });
+  }
 
   return res.status(statusCode).render('error', {
     statusCode,
@@ -223,30 +299,86 @@ app.use((error, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
+let httpServer;
+let mongoRetryTimer;
 
-async function startServer() {
-  if (!process.env.MONGODB_URI) {
-    console.warn('⚠️ No MONGODB_URI found in .env. Falling back to mongodb://127.0.0.1:27017/futb-housing');
+function validateEnvironment() {
+  if (!mongoUri) throw new Error('MONGODB_URI must be configured.');
+  if (!sessionOptions.secret || sessionOptions.secret.length < 32) {
+    throw new Error('SESSION_SECRET must contain at least 32 characters.');
   }
-
-  try {
-    console.log('🔌 Attempting to connect to MongoDB...');
-    await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 5000
-    });
-    enableMongoSessionStore();
-    console.log('✅ Connected to MongoDB successfully!');
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-    });
-  } catch (err) {
-    console.error('❌ MongoDB connection failed:', err.message);
-    console.error('Use a valid local MongoDB URI or set a working Atlas connection in the .env file.');
-    console.warn('⚠️ Starting the app without a working database connection.');
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT} without a live MongoDB connection.`);
-    });
+  if (isProduction) {
+    if (!process.env.APP_URL || new URL(process.env.APP_URL).protocol !== 'https:') {
+      throw new Error('APP_URL must be the public HTTPS URL of the production service.');
+    }
+    if (String(process.env.PAYSTACK_MODE || 'live').trim().toLowerCase() !== 'live') {
+      throw new Error('PAYSTACK_MODE must be live in production.');
+    }
+    if (!String(process.env.PAYSTACK_SECRET_KEY || '').startsWith('sk_live_')) {
+      throw new Error('Production requires a live Paystack secret key in PAYSTACK_SECRET_KEY.');
+    }
   }
 }
 
-startServer();
+function scheduleMongoReconnect() {
+  if (mongoRetryTimer || mongoose.connection.readyState === 1) return;
+  mongoRetryTimer = setTimeout(async () => {
+    mongoRetryTimer = null;
+    if (mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2) return;
+    try {
+      await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000, maxPoolSize: 10 });
+      enableMongoSessionStore();
+      console.info('MongoDB connection restored.');
+    } catch (error) {
+      console.error('MongoDB reconnect failed:', error.name);
+      scheduleMongoReconnect();
+    }
+  }, 30000);
+  mongoRetryTimer.unref();
+}
+
+mongoose.connection.on('connected', enableMongoSessionStore);
+mongoose.connection.on('disconnected', () => {
+  console.warn('MongoDB disconnected.');
+  scheduleMongoReconnect();
+});
+
+function handleFatalProcessError(error) {
+  console.error('Fatal process error:', {
+    name: error?.name || 'Error',
+    code: error?.code
+  });
+  if (httpServer) {
+    httpServer.close(() => process.exit(1));
+    const forceExit = setTimeout(() => process.exit(1), 10000);
+    forceExit.unref();
+  } else {
+    process.exit(1);
+  }
+}
+
+process.on('unhandledRejection', handleFatalProcessError);
+process.on('uncaughtException', handleFatalProcessError);
+
+async function startServer() {
+  validateEnvironment();
+  httpServer = app.listen(PORT, () => {
+    console.info(`Server listening on port ${PORT}.`);
+  });
+  try {
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 10
+    });
+    enableMongoSessionStore();
+    console.info('MongoDB connected.');
+  } catch (err) {
+    console.error('MongoDB connection failed:', err.name);
+    scheduleMongoReconnect();
+  }
+}
+
+startServer().catch(error => {
+  console.error('Application startup failed:', error.message);
+  process.exitCode = 1;
+});

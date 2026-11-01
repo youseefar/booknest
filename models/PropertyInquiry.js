@@ -29,5 +29,6 @@ const propertyInquirySchema = new mongoose.Schema({
 }, { timestamps: true });
 
 propertyInquirySchema.index({ buyerId: 1, propertyId: 1 }, { unique: true });
+propertyInquirySchema.index({ propertyId: 1, timestamp: -1 });
 
 module.exports = mongoose.model('PropertyInquiry', propertyInquirySchema);

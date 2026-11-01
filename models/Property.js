@@ -3,11 +3,14 @@ const mongoose = require('mongoose');
 const propertySchema = new mongoose.Schema({
     title: {
         type: String,
-        required: true
+        required: true,
+        trim: true,
+        maxlength: 120
     },
     description: {
         type: String,
-        required: true
+        required: true,
+        maxlength: 3000
     },
     price: {
         type: Number,
@@ -20,25 +23,31 @@ const propertySchema = new mongoose.Schema({
     },
     location: {
         type: String,
-        required: true
+        required: true,
+        trim: true,
+        maxlength: 120
     },
     address: {
         type: String,
-        required: true
+        required: true,
+        trim: true,
+        maxlength: 240
     },
-    amenities: [{
-        type: String
-    }],
+    amenities: {
+        type: [{ type: String, trim: true, maxlength: 80 }],
+        validate: [amenities => amenities.length <= 20, 'A property can have at most 20 amenities.']
+    },
     images: [{
         type: String
     }],
-    videoUrl: {
-        type: String,
-        default: ''
+    paymentReservationBookingId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Booking',
+        default: null
     },
-    videoPosterUrl: {
-        type: String,
-        default: ''
+    paymentReservationExpiresAt: {
+        type: Date,
+        default: null
     },
     reviews: [{
         userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -62,6 +71,10 @@ const propertySchema = new mongoose.Schema({
         default: 'pending'
     },
 }, { timestamps: true });
+
+propertySchema.index({ status: 1, verificationStatus: 1, createdAt: -1 });
+propertySchema.index({ verificationStatus: 1, createdAt: 1 });
+propertySchema.index({ landlordId: 1, createdAt: -1 });
 
 propertySchema.virtual('averageRating').get(function () {
     if (!this.reviews?.length) return null;
