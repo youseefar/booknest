@@ -22,6 +22,7 @@ const validateRequestBody = require('./middleware/validate-request-body');
 const app = express();
 const { getPaymentMode } = require('./services/paystack');
 const { isDatabaseError, isStorageLimitError } = require('./services/database-errors');
+const { isOpaqueSameOriginNavigation } = require('./services/request-origin');
 app.locals.paystackMode = getPaymentMode();
 mongoose.set('bufferCommands', false);
 app.set('trust proxy', 1);
@@ -96,6 +97,10 @@ for (const originValue of [process.env.APP_URL, process.env.FRONTEND_ORIGIN]) {
 app.use((req, res, next) => {
   const origin = req.get('Origin');
   if (!origin) return next();
+  if (origin === 'null') {
+    if (isOpaqueSameOriginNavigation(req)) return next();
+    return res.sendStatus(403);
+  }
 
   let requestOrigin;
   try {
