@@ -185,6 +185,7 @@ router.post('/forgot-password', async (req, res, next) => {
               code: cleanupError.code
             });
           }
+          throw emailError;
         }
       } else {
         response.resetLink = `/reset-password/${rawToken}`;
