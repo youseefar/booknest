@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Property = require('../models/Property');
 const PropertyInquiry = require('../models/PropertyInquiry');
 const { requireRole } = require('../middleware/auth');
+const { isEmailConfigured, sendEmail } = require('../services/email');
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ router.post('/property/:id/inquiries', requireRole('student'), async (req, res, 
             listingType: 'sale',
             status: 'available',
             verificationStatus: 'verified'
-        });
+        }).populate('landlordId', 'name email');
         if (!property) return res.status(404).send('This property is not available for sale.');
 
         await PropertyInquiry.create({
@@ -26,6 +27,31 @@ router.post('/property/:id/inquiries', requireRole('student'), async (req, res, 
             propertyId: property._id,
             message
         });
+        if (isEmailConfigured()) {
+            try {
+                await sendEmail({
+                    to: property.landlordId.email,
+                    subject: 'New property inquiry on Jacob Estate',
+                    text: [
+                        `Hello ${property.landlordId.name},`,
+                        '',
+                        `${req.user.name} is interested in "${property.title}" in ${property.location}.`,
+                        req.user.email ? `Buyer email: ${req.user.email}` : null,
+                        req.user.phone ? `Buyer phone: ${req.user.phone}` : null,
+                        message ? `\nMessage:\n${message}` : null,
+                        '',
+                        `View and manage inquiries: ${new URL('/sales-inquiries', process.env.APP_URL || `${req.protocol}://${req.get('host')}`).toString()}`
+                    ].filter(Boolean).join('\n')
+                });
+            } catch (emailError) {
+                console.error('Seller inquiry email failed:', {
+                    name: emailError.name,
+                    code: emailError.code
+                });
+            }
+        } else {
+            console.warn('Seller inquiry email not sent: email service is not configured.');
+        }
         return res.redirect(`/property/${property._id}?inquiry=submitted`);
     } catch (error) {
         if (error.code === 11000) return res.redirect(`/property/${req.params.id}?inquiry=exists`);

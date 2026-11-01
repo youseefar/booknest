@@ -33,6 +33,20 @@ const propertySchema = new mongoose.Schema({
         trim: true,
         maxlength: 240
     },
+    bedrooms: {
+        type: Number,
+        min: 0,
+        max: 50,
+        validate: value => value == null || Number.isInteger(value),
+        default: null
+    },
+    bathrooms: {
+        type: Number,
+        min: 0,
+        max: 50,
+        validate: value => value == null || Number.isInteger(value),
+        default: null
+    },
     amenities: {
         type: [{ type: String, trim: true, maxlength: 80 }],
         validate: [amenities => amenities.length <= 20, 'A property can have at most 20 amenities.']
@@ -75,6 +89,10 @@ const propertySchema = new mongoose.Schema({
 propertySchema.index({ status: 1, verificationStatus: 1, createdAt: -1 });
 propertySchema.index({ verificationStatus: 1, createdAt: 1 });
 propertySchema.index({ landlordId: 1, createdAt: -1 });
+propertySchema.index(
+    { title: 'text', location: 'text', address: 'text' },
+    { name: 'property_text_search', weights: { title: 5, location: 3, address: 1 } }
+);
 
 propertySchema.virtual('averageRating').get(function () {
     if (!this.reviews?.length) return null;
