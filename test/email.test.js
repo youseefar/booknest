@@ -1,68 +1,84 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { isEmailConfigured, sendEmail } = require('../services/email');
+const { createTransport, isEmailConfigured, sendEmail } = require('../services/email');
 
-const originalApiKey = process.env.RESEND_API_KEY;
-const originalFrom = process.env.EMAIL_FROM;
-const originalFetch = global.fetch;
+const originalUser = process.env.SMTP_USER;
+const originalPassword = process.env.SMTP_APP_PASSWORD;
 
 test.after(() => {
-    if (originalApiKey === undefined) delete process.env.RESEND_API_KEY;
-    else process.env.RESEND_API_KEY = originalApiKey;
-    if (originalFrom === undefined) delete process.env.EMAIL_FROM;
-    else process.env.EMAIL_FROM = originalFrom;
-    global.fetch = originalFetch;
+    if (originalUser === undefined) delete process.env.SMTP_USER;
+    else process.env.SMTP_USER = originalUser;
+    if (originalPassword === undefined) delete process.env.SMTP_APP_PASSWORD;
+    else process.env.SMTP_APP_PASSWORD = originalPassword;
 });
 
-test('email configuration requires both Resend credentials', () => {
-    assert.equal(isEmailConfigured({ RESEND_API_KEY: 'key', EMAIL_FROM: 'Jacob Estate <mail@example.com>' }), true);
-    assert.equal(isEmailConfigured({ RESEND_API_KEY: 'key' }), false);
-    assert.equal(isEmailConfigured({ EMAIL_FROM: 'mail@example.com' }), false);
+test('email configuration requires the Gmail address and app password', () => {
+    assert.equal(isEmailConfigured({ SMTP_USER: 'jacob@example.com', SMTP_APP_PASSWORD: 'app-password' }), true);
+    assert.equal(isEmailConfigured({ SMTP_USER: 'jacob@example.com' }), false);
+    assert.equal(isEmailConfigured({ SMTP_APP_PASSWORD: 'app-password' }), false);
 });
 
-test('sendEmail requires configuration', async () => {
-    delete process.env.RESEND_API_KEY;
-    delete process.env.EMAIL_FROM;
-    await assert.rejects(sendEmail({
-        to: 'buyer@example.com',
-        subject: 'Reset your password',
-        text: 'Follow the secure reset link.'
-    }), error => error.code === 'EMAIL_NOT_CONFIGURED' && error.status === 503);
+test('Gmail transport requires configuration and removes App Password spaces', () => {
+    assert.throws(() => createTransport({ SMTP_USER: 'jacob@example.com' }), error =>
+        error.code === 'EMAIL_NOT_CONFIGURED' && error.status === 503
+    );
+
+    let options;
+    createTransport({
+        SMTP_USER: 'jacob@example.com',
+        SMTP_APP_PASSWORD: 'abcd efgh ijkl mnop'
+    }, {
+        createTransport: settings => {
+            options = settings;
+            return {};
+        }
+    });
+    assert.equal(options.host, 'smtp.gmail.com');
+    assert.equal(options.port, 587);
+    assert.equal(options.secure, false);
+    assert.equal(options.requireTLS, true);
+    assert.equal(options.auth.user, 'jacob@example.com');
+    assert.equal(options.auth.pass, 'abcdefghijklmnop');
 });
 
-test('sendEmail sends plain-text messages through the Resend API', async () => {
-    process.env.RESEND_API_KEY = 'test-api-key';
-    process.env.EMAIL_FROM = 'Jacob Estate <mail@example.com>';
-    let request;
-    global.fetch = async (url, options) => {
-        request = { url, options };
-        return { ok: true, status: 200 };
-    };
-
+test('sendEmail sends through the configured Gmail identity and closes its transport', async () => {
+    process.env.SMTP_USER = 'jacob@example.com';
+    process.env.SMTP_APP_PASSWORD = 'gmail-app-password';
+    let message;
+    let closed = false;
     await sendEmail({
         to: 'buyer@example.com',
         subject: 'Reset your password',
         text: 'Follow the secure reset link.'
+    }, {
+        createTransport: () => ({
+            sendMail: async value => { message = value; },
+            close: () => { closed = true; }
+        })
     });
 
-    assert.equal(request.url, 'https://api.resend.com/emails');
-    assert.equal(request.options.headers.Authorization, 'Bearer test-api-key');
-    assert.deepEqual(JSON.parse(request.options.body), {
-        from: 'Jacob Estate <mail@example.com>',
-        to: ['buyer@example.com'],
+    assert.deepEqual(message, {
+        from: 'Jacob Estate <jacob@example.com>',
+        to: 'buyer@example.com',
         subject: 'Reset your password',
         text: 'Follow the secure reset link.'
     });
+    assert.equal(closed, true);
 });
 
-test('sendEmail reports provider errors without returning provider response content', async () => {
-    process.env.RESEND_API_KEY = 'test-api-key';
-    process.env.EMAIL_FROM = 'Jacob Estate <mail@example.com>';
-    global.fetch = async () => ({ ok: false, status: 429 });
-
+test('sendEmail returns a sanitized error when SMTP delivery fails', async () => {
+    process.env.SMTP_USER = 'jacob@example.com';
+    process.env.SMTP_APP_PASSWORD = 'gmail-app-password';
     await assert.rejects(sendEmail({
         to: 'buyer@example.com',
         subject: 'Reset your password',
         text: 'Follow the secure reset link.'
-    }), error => error.code === 'EMAIL_DELIVERY_FAILED' && error.status === 503);
+    }, {
+        createTransport: () => ({
+            sendMail: async () => { throw new Error('provider response with private detail'); },
+            close() {}
+        })
+    }), error => error.code === 'EMAIL_DELIVERY_FAILED'
+        && error.status === 503
+        && !error.message.includes('private detail'));
 });
