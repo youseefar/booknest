@@ -5,6 +5,222 @@
     let pageLoader;
     let loaderRemovalTimer;
 
+    const initializeConfirmations = () => {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'app-confirm-backdrop';
+        backdrop.hidden = true;
+        backdrop.innerHTML = `
+            <section class="app-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="app-confirm-title" aria-describedby="app-confirm-message">
+                <span class="app-confirm-icon" aria-hidden="true"><i class="bi bi-exclamation-circle"></i></span>
+                <h2 id="app-confirm-title">Please confirm</h2>
+                <p id="app-confirm-message"></p>
+                <div class="app-confirm-actions">
+                    <button class="app-confirm-cancel" type="button" data-confirm-cancel>Cancel</button>
+                    <button class="app-confirm-accept" type="button" data-confirm-accept>Continue</button>
+                </div>
+            </section>`;
+        document.body.append(backdrop);
+
+        const title = backdrop.querySelector('#app-confirm-title');
+        const message = backdrop.querySelector('#app-confirm-message');
+        const cancelButton = backdrop.querySelector('[data-confirm-cancel]');
+        const acceptButton = backdrop.querySelector('[data-confirm-accept]');
+        let pendingForm = null;
+        let pendingSubmitter = null;
+        let confirmedForm = null;
+        let previousFocus = null;
+
+        const close = () => {
+            backdrop.hidden = true;
+            document.body.classList.remove('app-confirm-open');
+            pendingForm = null;
+            pendingSubmitter = null;
+            if (previousFocus?.isConnected) previousFocus.focus();
+            previousFocus = null;
+        };
+
+        document.addEventListener('submit', event => {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement) || !form.dataset.confirmMessage) return;
+            if (form === confirmedForm) {
+                confirmedForm = null;
+                return;
+            }
+
+            event.preventDefault();
+            pendingForm = form;
+            pendingSubmitter = event.submitter || null;
+            previousFocus = document.activeElement;
+            title.textContent = form.dataset.confirmTitle || 'Please confirm';
+            message.textContent = form.dataset.confirmMessage;
+            acceptButton.textContent = form.dataset.confirmAction || 'Continue';
+            acceptButton.className = `app-confirm-accept is-${['danger', 'warning'].includes(form.dataset.confirmVariant) ? form.dataset.confirmVariant : 'primary'}`;
+            backdrop.hidden = false;
+            document.body.classList.add('app-confirm-open');
+            cancelButton.focus();
+        });
+
+        cancelButton.addEventListener('click', close);
+        backdrop.addEventListener('click', event => {
+            if (event.target === backdrop) close();
+        });
+        acceptButton.addEventListener('click', () => {
+            const form = pendingForm;
+            const submitter = pendingSubmitter;
+            if (!form) return close();
+            confirmedForm = form;
+            close();
+            if (submitter) form.requestSubmit(submitter);
+            else form.requestSubmit();
+        });
+        document.addEventListener('keydown', event => {
+            if (backdrop.hidden) return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                close();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+
+            const focusable = [cancelButton, acceptButton];
+            const currentIndex = focusable.indexOf(document.activeElement);
+            if (currentIndex === -1) {
+                event.preventDefault();
+                cancelButton.focus();
+            } else if (event.shiftKey && currentIndex === 0) {
+                event.preventDefault();
+                acceptButton.focus();
+            } else if (!event.shiftKey && currentIndex === focusable.length - 1) {
+                event.preventDefault();
+                cancelButton.focus();
+            }
+        });
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeConfirmations, { once: true });
+    } else {
+        initializeConfirmations();
+    }
+
+    if (!document.querySelector('link[rel="manifest"]')) {
+        const manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = '/manifest.webmanifest';
+        document.head.append(manifestLink);
+    }
+
+    if (!document.querySelector('link[href="/css/pwa.css"]')) {
+        const pwaStyles = document.createElement('link');
+        pwaStyles.rel = 'stylesheet';
+        pwaStyles.href = '/css/pwa.css';
+        document.head.append(pwaStyles);
+    }
+
+    const addMeta = (name, content) => {
+        if (document.querySelector(`meta[name="${name}"]`)) return;
+        const meta = document.createElement('meta');
+        meta.name = name;
+        meta.content = content;
+        document.head.append(meta);
+    };
+
+    addMeta('theme-color', '#17355c');
+    addMeta('apple-mobile-web-app-capable', 'yes');
+    addMeta('apple-mobile-web-app-title', 'Jacob Estate');
+    addMeta('apple-mobile-web-app-status-bar-style', 'default');
+
+    if ('serviceWorker' in navigator && window.isSecureContext) {
+        navigator.serviceWorker.register('/service-worker.js', { scope: '/' }).catch(error => {
+            console.error('Unable to register the Jacob Estate service worker:', error);
+        });
+    }
+
+    const installDismissalKey = 'jacobrent-pwa-dismissed-until';
+    const userAgent = navigator.userAgent || '';
+    const isIosDevice = /iphone|ipad|ipod/i.test(userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isSafari = /safari/i.test(userAgent) && !/crios|fxios|edgios|opios/i.test(userAgent);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    let deferredInstallPrompt = null;
+    let installPromptCard = null;
+
+    const wasInstallPromptDismissed = () => {
+        try {
+            return Number(localStorage.getItem(installDismissalKey) || 0) > Date.now();
+        } catch (error) {
+            return false;
+        }
+    };
+
+    const removeInstallPrompt = () => {
+        installPromptCard?.remove();
+        installPromptCard = null;
+    };
+
+    const showInstallPrompt = () => {
+        if (installPromptCard || isStandalone || wasInstallPromptDismissed()) return;
+        if (!deferredInstallPrompt && !(isIosDevice && isSafari)) return;
+
+        installPromptCard = document.createElement('aside');
+        installPromptCard.className = 'pwa-install-prompt';
+        installPromptCard.setAttribute('role', 'dialog');
+        installPromptCard.setAttribute('aria-labelledby', 'pwa-install-title');
+        installPromptCard.innerHTML = `
+            <img class="pwa-install-icon" src="/jacobrent-app-icon.svg" alt="">
+            <span class="pwa-install-copy">
+                <strong id="pwa-install-title">Install Jacob Estate</strong>
+                <span data-install-copy>Add it to your device for quick access.</span>
+            </span>
+            <button class="pwa-install-action" type="button" data-install-action>${isIosDevice ? 'How to add' : 'Install'}</button>
+            <button class="pwa-install-dismiss" type="button" data-install-dismiss aria-label="Dismiss install prompt"><i class="bi bi-x-lg" aria-hidden="true"></i></button>`;
+
+        const installButton = installPromptCard.querySelector('[data-install-action]');
+        const dismissButton = installPromptCard.querySelector('[data-install-dismiss]');
+        const installCopy = installPromptCard.querySelector('[data-install-copy]');
+
+        installButton.addEventListener('click', async () => {
+            if (isIosDevice) {
+                installCopy.textContent = 'In Safari, tap Share, then Add to Home Screen.';
+                installButton.hidden = true;
+                return;
+            }
+            if (!deferredInstallPrompt) return;
+
+            deferredInstallPrompt.prompt();
+            const result = await deferredInstallPrompt.userChoice;
+            deferredInstallPrompt = null;
+            if (result.outcome === 'accepted') removeInstallPrompt();
+            else installPromptCard?.remove();
+        });
+
+        dismissButton.addEventListener('click', () => {
+            try {
+                localStorage.setItem(installDismissalKey, String(Date.now() + 7 * 24 * 60 * 60 * 1000));
+            } catch (error) {
+                // Dismissal remains effective for the current page if storage is unavailable.
+            }
+            removeInstallPrompt();
+        });
+
+        document.body.append(installPromptCard);
+    };
+
+    window.addEventListener('beforeinstallprompt', event => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+        window.setTimeout(showInstallPrompt, 1200);
+    });
+
+    window.addEventListener('appinstalled', () => {
+        deferredInstallPrompt = null;
+        removeInstallPrompt();
+    });
+
+    if (isIosDevice && isSafari && !isStandalone) {
+        window.setTimeout(showInstallPrompt, 1800);
+    }
+
     const createLoader = () => {
         if (pageLoader?.isConnected) return pageLoader;
 
@@ -14,7 +230,7 @@
         pageLoader.setAttribute('aria-live', 'polite');
         pageLoader.innerHTML = `
             <div class="page-loader-content">
-                <span class="page-loader-brand">JacobRent</span>
+                <span class="page-loader-brand">Jacob Estate</span>
                 <p>Getting your page ready</p>
                 <div class="page-loader-progress" aria-hidden="true"><span></span></div>
             </div>`;

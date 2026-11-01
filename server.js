@@ -14,6 +14,7 @@ const bookingRoutes = require('./routes/booking');
 const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payments');
 const legalRoutes = require('./routes/legal');
+const propertyInquiryRoutes = require('./routes/property-inquiry');
 const User = require('./models/User');
 const bcryptjs = require('bcryptjs');
 
@@ -143,6 +144,7 @@ app.use('/', bookingRoutes);
 app.use('/', adminRoutes);
 app.use('/', paymentRoutes);
 app.use('/', legalRoutes);
+app.use('/', propertyInquiryRoutes);
 
 // Home page
 app.get('/', async (req, res) => {

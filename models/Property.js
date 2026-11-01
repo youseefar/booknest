@@ -13,6 +13,11 @@ const propertySchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    listingType: {
+        type: String,
+        enum: ['rent', 'sale'],
+        default: 'rent'
+    },
     location: {
         type: String,
         required: true
@@ -48,7 +53,7 @@ const propertySchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['available', 'rented', 'maintenance'],
+        enum: ['available', 'rented', 'sold', 'maintenance'],
         default: 'available'
     },
     verificationStatus: {

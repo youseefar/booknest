@@ -1,0 +1,238 @@
+.pwa-install-prompt {
+    position: fixed;
+    z-index: 11000;
+    right: 1rem;
+    bottom: 1rem;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto 36px;
+    align-items: center;
+    gap: 0.75rem;
+    width: min(100% - 2rem, 430px);
+    padding: 0.8rem;
+    border: 1px solid rgba(23, 53, 92, 0.14);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 12px 38px rgba(17, 24, 39, 0.2);
+    color: #172a3d;
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    animation: pwa-prompt-enter 220ms ease-out both;
+}
+
+.pwa-install-prompt[hidden] {
+    display: none;
+}
+
+.pwa-install-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 9px;
+}
+
+.pwa-install-copy {
+    display: grid;
+    min-width: 0;
+    line-height: 1.25;
+}
+
+.pwa-install-copy strong {
+    font-size: 0.92rem;
+    font-weight: 750;
+}
+
+.pwa-install-copy span {
+    margin-top: 0.2rem;
+    color: #62766e;
+    font-size: 0.78rem;
+}
+
+.pwa-install-action,
+.pwa-install-dismiss {
+    display: grid;
+    place-items: center;
+    min-height: 36px;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.pwa-install-action {
+    padding: 0.45rem 0.75rem;
+    background: #17355c;
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.pwa-install-action:hover {
+    background: #214876;
+}
+
+.pwa-install-dismiss {
+    width: 36px;
+    background: transparent;
+    color: #62766e;
+    font-size: 1.1rem;
+}
+
+.pwa-install-action:focus-visible,
+.pwa-install-dismiss:focus-visible {
+    outline: 2px solid #236d60;
+    outline-offset: 2px;
+}
+
+@keyframes pwa-prompt-enter {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+    .pwa-install-prompt {
+        right: 0.65rem;
+        bottom: 0.65rem;
+        grid-template-columns: 40px minmax(0, 1fr) auto 32px;
+        gap: 0.55rem;
+        width: calc(100% - 1.3rem);
+        padding: 0.65rem;
+    }
+
+    .pwa-install-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .pwa-install-action {
+        padding-inline: 0.6rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pwa-install-prompt {
+        animation: none;
+    }
+}
+
+.app-confirm-open {
+    overflow: hidden;
+}
+
+.app-confirm-backdrop {
+    position: fixed;
+    z-index: 12000;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 1.25rem;
+    background: rgba(15, 27, 40, 0.58);
+    backdrop-filter: blur(4px);
+}
+
+.app-confirm-backdrop[hidden] {
+    display: none;
+}
+
+.app-confirm-dialog {
+    width: min(100%, 430px);
+    padding: 1.6rem;
+    border: 1px solid rgba(23, 53, 92, 0.12);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 24px 80px rgba(8, 20, 34, 0.28);
+    color: #172a3d;
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    animation: pwa-prompt-enter 160ms ease-out both;
+}
+
+.app-confirm-icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    margin-bottom: 1rem;
+    border-radius: 12px;
+    background: #edf3fa;
+    color: #17355c;
+    font-size: 1.35rem;
+}
+
+.app-confirm-dialog h2 {
+    margin: 0 0 0.55rem;
+    font-size: 1.2rem;
+    font-weight: 750;
+}
+
+.app-confirm-dialog p {
+    margin: 0;
+    color: #62766e;
+    line-height: 1.55;
+}
+
+.app-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    margin-top: 1.5rem;
+}
+
+.app-confirm-actions button {
+    min-height: 42px;
+    padding: 0.55rem 0.9rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.app-confirm-cancel {
+    border-color: #d7e0e8 !important;
+    background: #fff;
+    color: #31465b;
+}
+
+.app-confirm-cancel:hover {
+    background: #f3f6f8;
+}
+
+.app-confirm-accept.is-primary {
+    background: #17355c;
+    color: #fff;
+}
+
+.app-confirm-accept.is-warning {
+    background: #9a5a08;
+    color: #fff;
+}
+
+.app-confirm-accept.is-danger {
+    background: #b42332;
+    color: #fff;
+}
+
+.app-confirm-accept:hover {
+    filter: brightness(1.08);
+}
+
+.app-confirm-actions button:focus-visible {
+    outline: 3px solid rgba(35, 109, 96, 0.45);
+    outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+    .app-confirm-dialog {
+        padding: 1.25rem;
+    }
+
+    .app-confirm-actions button {
+        flex: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-confirm-dialog,
+    .app-confirm-actions button {
+        animation: none;
+        transition: none;
+    }
+}

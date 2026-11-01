@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= sellerView ? 'Sale inquiries' : 'My purchase inquiries' %> - Jacob Estate</title>
+    <link rel="icon" type="image/svg+xml" href="/jacobrent-mark.svg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="/js/theme.js"></script>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="bg-soft">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand brand fw-bold" href="/" aria-label="Jacob Estate home"><img class="brand-logo" src="/jacobrent-mark.svg" alt="Jacob Estate mark">Jacob Estate</a>
+            <div class="d-flex gap-3 align-items-center">
+                <a class="nav-link text-dark" href="/properties">Properties</a>
+                <a class="nav-link text-dark" href="/dashboard">Dashboard</a>
+                <a class="nav-link text-dark" href="/logout">Logout</a>
+            </div>
+        </div>
+    </nav>
+    <main class="container py-5">
+        <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+            <div>
+                <span class="eyebrow text-uppercase"><%= sellerView ? 'Seller workspace' : 'Buyer workspace' %></span>
+                <h1 class="display-6 fw-bold mb-1"><%= sellerView ? 'Sale inquiries' : 'Your purchase inquiries' %></h1>
+                <p class="text-muted mb-0"><%= sellerView ? 'Follow up with people interested in viewing your properties.' : 'Keep track of the homes you have asked about.' %></p>
+            </div>
+            <a href="/dashboard" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-2"></i>Dashboard</a>
+        </div>
+
+        <div class="row g-3">
+            <% if (!inquiries.length) { %>
+                <div class="col-12">
+                    <div class="empty-state">
+                        <strong><%= sellerView ? 'No sale inquiries yet.' : 'You have not asked about a home yet.' %></strong>
+                        <p><%= sellerView ? 'Buyer messages for your verified sale listings will appear here.' : 'Send an inquiry from any available home-for-sale listing.' %></p>
+                        <a href="<%= sellerView ? '/add-property' : '/properties?type=sale' %>" class="btn btn-primary"><%= sellerView ? 'Add a property' : 'Browse homes for sale' %></a>
+                    </div>
+                </div>
+            <% } %>
+            <% inquiries.forEach(inquiry => { %>
+                <div class="col-12">
+                    <article class="glass-card p-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                            <div>
+                                <% if (inquiry.propertyId) { %>
+                                    <a class="text-link fw-bold" href="/property/<%= inquiry.propertyId._id %>"><%= inquiry.propertyId.title %></a>
+                                    <p class="text-muted mb-2"><i class="bi bi-geo-alt me-1"></i><%= inquiry.propertyId.location %> · ₦<%= inquiry.propertyId.price.toLocaleString() %></p>
+                                <% } else { %>
+                                    <strong>Property no longer available</strong>
+                                <% } %>
+                            </div>
+                            <span class="badge text-bg-light"><%= inquiry.status %></span>
+                        </div>
+
+                        <p class="mb-3"><%= inquiry.message || 'No message provided.' %></p>
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 border-top pt-3">
+                            <div class="small text-muted">
+                                <% if (sellerView && inquiry.buyerId) { %>
+                                    <strong><%= inquiry.buyerId.name %></strong>
+                                    · <a href="mailto:<%= inquiry.buyerId.email %>"><%= inquiry.buyerId.email %></a>
+                                    <% if (inquiry.buyerId.phone) { %> · <a href="tel:<%= inquiry.buyerId.phone %>"><%= inquiry.buyerId.phone %></a><% } %>
+                                <% } else if (!sellerView && inquiry.propertyId && inquiry.propertyId.landlordId) { %>
+                                    Seller: <strong><%= inquiry.propertyId.landlordId.name %></strong>
+                                    · <a href="mailto:<%= inquiry.propertyId.landlordId.email %>"><%= inquiry.propertyId.landlordId.email %></a>
+                                    <% if (inquiry.propertyId.landlordId.phone) { %> · <a href="tel:<%= inquiry.propertyId.landlordId.phone %>"><%= inquiry.propertyId.landlordId.phone %></a><% } %>
+                                <% } %>
+                                · <%= new Date(inquiry.timestamp).toLocaleDateString() %>
+                            </div>
+                            <% if (sellerView) { %>
+                                <form class="d-flex gap-2" method="POST" action="/sales-inquiries/<%= inquiry._id %>/status">
+                                    <label class="visually-hidden" for="inquiry-status-<%= inquiry._id %>">Update inquiry status</label>
+                                    <select class="form-select form-select-sm" id="inquiry-status-<%= inquiry._id %>" name="status">
+                                        <option value="pending" <%= inquiry.status === 'pending' ? 'selected' : '' %>>Pending</option>
+                                        <option value="viewed" <%= inquiry.status === 'viewed' ? 'selected' : '' %>>Viewed</option>
+                                        <option value="contacted" <%= inquiry.status === 'contacted' ? 'selected' : '' %>>Contacted</option>
+                                        <option value="rejected" <%= inquiry.status === 'rejected' ? 'selected' : '' %>>Not proceeding</option>
+                                    </select>
+                                    <button class="btn btn-primary btn-sm" type="submit">Update</button>
+                                </form>
+                            <% } %>
+                        </div>
+                    </article>
+                </div>
+            <% }) %>
+        </div>
+    </main>
+    <%- include('partials/legal-footer') %>
+</body>
+</html>

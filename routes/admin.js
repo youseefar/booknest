@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const Property = require('../models/Property');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
+const PropertyInquiry = require('../models/PropertyInquiry');
 const { getPaystackSecretKey, paystackConfigurationMessage, paystackRequest } = require('../services/paystack');
 const { requireRole } = require('../middleware/auth');
 
@@ -29,7 +30,7 @@ router.get('/admin', requireRole('admin'), async (req, res) => {
         }
         const search = String(req.query.q || '').trim();
         const role = ['student', 'landlord', 'admin'].includes(req.query.role) ? req.query.role : '';
-        const propertyStatus = ['available', 'rented', 'maintenance'].includes(req.query.propertyStatus) ? req.query.propertyStatus : '';
+        const propertyStatus = ['available', 'rented', 'sold', 'maintenance'].includes(req.query.propertyStatus) ? req.query.propertyStatus : '';
         const verificationStatus = ['pending', 'verified', 'rejected'].includes(req.query.verificationStatus) ? req.query.verificationStatus : '';
         const searchFilter = search
             ? {
@@ -91,7 +92,7 @@ router.post('/admin/properties/:id/verification', requireRole('admin'), async (r
 router.post('/admin/properties/:id/manage', requireRole('admin'), async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
 
-    const allowedStatuses = ['available', 'rented', 'maintenance'];
+    const allowedStatuses = ['available', 'rented', 'sold', 'maintenance'];
     const allowedVerificationStatuses = ['pending', 'verified', 'rejected'];
     if (!allowedStatuses.includes(req.body.status) || !allowedVerificationStatuses.includes(req.body.verificationStatus)) {
         return res.status(400).send('Choose a valid listing and verification status.');
@@ -100,6 +101,10 @@ router.post('/admin/properties/:id/manage', requireRole('admin'), async (req, re
     try {
         const property = await Property.findById(req.params.id);
         if (!property) return res.status(404).send('Property not found.');
+        if ((property.listingType === 'sale' && req.body.status === 'rented')
+            || (property.listingType === 'rent' && req.body.status === 'sold')) {
+            return res.status(400).send('Choose a status that matches this listing type.');
+        }
 
         if (req.body.status === 'available') {
             await Booking.syncExpiredSubscriptions();
@@ -126,6 +131,7 @@ router.post('/admin/properties/:id/delete', requireRole('admin'), async (req, re
     const property = await Property.findByIdAndDelete(req.params.id);
     if (!property) return res.status(404).send('Property not found.');
     await Booking.deleteMany({ propertyId: property._id });
+    await PropertyInquiry.deleteMany({ propertyId: property._id });
     res.redirect('/admin');
 });
 
@@ -139,6 +145,7 @@ router.post('/admin/users/:id/delete', requireRole('admin'), async (req, res) =>
     const ownedProperties = await Property.find({ landlordId: targetUser._id }).select('_id');
     const propertyIds = ownedProperties.map(property => property._id);
     await Booking.deleteMany({ $or: [{ studentId: targetUser._id }, { propertyId: { $in: propertyIds } }] });
+    await PropertyInquiry.deleteMany({ $or: [{ buyerId: targetUser._id }, { propertyId: { $in: propertyIds } }] });
     await Property.deleteMany({ landlordId: targetUser._id });
     await User.findByIdAndDelete(targetUser._id);
     res.redirect('/admin');

@@ -5,6 +5,7 @@ const bcryptjs = require('bcryptjs');
 const User = require('../models/User');
 const Property = require('../models/Property');
 const Booking = require('../models/Booking');
+const PropertyInquiry = require('../models/PropertyInquiry');
 const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 
@@ -27,7 +28,7 @@ router.get('/register', (req, res) => {
 router.get('/register/landlord', (req, res) => {
   res.render('register-landlord', {
     role: 'landlord',
-    pageTitle: 'Landlord Registration',
+    pageTitle: 'Property Owner Registration',
     returnTo: getPropertyReturnPath(req.query.returnTo)
   });
 });
@@ -54,7 +55,7 @@ router.post('/register', async (req, res, next) => {
           : 'Please provide a valid name, email, and password.',
         mode: role === 'landlord' ? 'landlord' : 'student',
         role,
-        pageTitle: role === 'landlord' ? 'Landlord Registration' : 'Register',
+        pageTitle: role === 'landlord' ? 'Property Owner Registration' : 'Register',
         returnTo
       });
     }
@@ -64,7 +65,7 @@ router.post('/register', async (req, res, next) => {
         message: 'Passwords do not match',
         mode: role === 'landlord' ? 'landlord' : 'student',
         role,
-        pageTitle: role === 'landlord' ? 'Landlord Registration' : 'Register',
+        pageTitle: role === 'landlord' ? 'Property Owner Registration' : 'Register',
         returnTo
       });
     }
@@ -75,7 +76,7 @@ router.post('/register', async (req, res, next) => {
         message: 'Email already registered',
         mode: role === 'landlord' ? 'landlord' : 'student',
         role,
-        pageTitle: role === 'landlord' ? 'Landlord Registration' : 'Register',
+        pageTitle: role === 'landlord' ? 'Property Owner Registration' : 'Register',
         returnTo
       });
     }
@@ -231,22 +232,42 @@ router.get('/dashboard', (req, res) => {
 
   if (req.user.role === 'landlord') {
     return Property.find({ landlordId: req.user._id }).sort({ createdAt: -1 })
-      .then(properties => Booking.find({
-        propertyId: { $in: properties.map(property => property._id) },
-        status: { $ne: 'awaiting_payment' }
+      .then(async properties => {
+        const propertyIds = properties.map(property => property._id);
+        const [bookings, propertyInquiries] = await Promise.all([
+          Booking.find({
+            propertyId: { $in: propertyIds },
+            status: { $ne: 'awaiting_payment' }
+          })
+            .populate('studentId', 'name email')
+            .populate('propertyId', 'title status')
+            .sort({ timestamp: -1 }),
+          PropertyInquiry.find({ propertyId: { $in: propertyIds } })
+            .populate('buyerId', 'name email')
+            .populate('propertyId', 'title')
+            .sort({ timestamp: -1 })
+        ]);
+        return res.render('dashboard', { user: req.user, properties, bookings, propertyInquiries });
       })
-        .populate('studentId', 'name email')
-        .populate('propertyId', 'title status')
-        .sort({ timestamp: -1 })
-        .then(bookings => res.render('dashboard', { user: req.user, properties, bookings })))
       .catch(err => res.status(500).send(err.message));
   }
 
   return Booking.syncExpiredSubscriptions()
-    .then(() => Booking.find({ studentId: req.user._id })
-      .populate('propertyId', 'title location price images videoUrl videoPosterUrl status')
-      .sort({ timestamp: -1 }))
-    .then(bookings => res.render('dashboard', { user: req.user, properties: [], bookings, bookingResult: req.query.booking }))
+    .then(() => Promise.all([
+      Booking.find({ studentId: req.user._id })
+        .populate('propertyId', 'title location price images videoUrl videoPosterUrl status listingType')
+        .sort({ timestamp: -1 }),
+      PropertyInquiry.find({ buyerId: req.user._id })
+        .populate('propertyId', 'title location price status listingType')
+        .sort({ timestamp: -1 })
+    ]))
+    .then(([bookings, propertyInquiries]) => res.render('dashboard', {
+      user: req.user,
+      properties: [],
+      bookings,
+      propertyInquiries,
+      bookingResult: req.query.booking
+    }))
     .catch(err => res.status(500).send(err.message));
 });
 

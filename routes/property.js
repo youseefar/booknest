@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const Property = require('../models/Property');
 const Booking = require('../models/Booking');
+const PropertyInquiry = require('../models/PropertyInquiry');
 const mongoose = require('mongoose');
 const { uploadPropertyVideo } = require('../services/cloudinary');
 const { requireAuth, requireRole } = require('../middleware/auth');
@@ -21,16 +22,19 @@ router.get('/properties', async (req, res) => {
     try {
         await Booking.syncExpiredSubscriptions();
         const search = String(req.query.q || '').trim();
+        const listingType = ['rent', 'sale'].includes(req.query.type) ? req.query.type : '';
         const filter = req.user?.role === 'admin'
             ? {}
             : req.user?.role === 'landlord'
             ? {
                 $or: [
-                    { status: { $in: ['available', 'rented'] }, verificationStatus: 'verified' },
+                    { status: { $in: ['available', 'rented', 'sold'] }, verificationStatus: 'verified' },
                     { landlordId: req.user._id }
                 ]
             }
-            : { status: { $in: ['available', 'rented'] }, verificationStatus: 'verified' };
+            : { status: { $in: ['available', 'rented', 'sold'] }, verificationStatus: 'verified' };
+
+        if (listingType) filter.listingType = listingType;
 
         if (search) {
             const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -48,7 +52,7 @@ router.get('/properties', async (req, res) => {
 
         const properties = await Property.find(filter).sort({ createdAt: -1 })
             .populate('landlordId', 'name phone email');
-        res.render('properties', { properties, user: req.user, search });
+        res.render('properties', { properties, user: req.user, search, listingType });
     } catch (err) {
         res.status(500).send(err.message);
     }
@@ -63,15 +67,18 @@ router.get('/property/:id', async (req, res) => {
             .populate('landlordId', 'name phone email payoutSubaccountCode payoutSubaccountMode');
 
         if (!property) return res.status(404).send('Property not found');
-        const canView = property.verificationStatus === 'verified' && ['available', 'rented'].includes(property.status)
+        const canView = property.verificationStatus === 'verified' && ['available', 'rented', 'sold'].includes(property.status)
             || req.user?.role === 'admin'
             || property.landlordId?._id.equals(req.user?._id);
         if (!canView) return res.status(404).send('Property not found');
-        const reviewEligible = req.user?.role === 'student' && Boolean(await Booking.exists({
+        const reviewEligible = property.listingType === 'rent' && req.user?.role === 'student' && Boolean(await Booking.exists({
             studentId: req.user._id,
             propertyId: property._id,
             paymentStatus: 'paid'
         }));
+        const existingInquiry = property.listingType === 'sale' && req.user?.role === 'student'
+            ? await PropertyInquiry.findOne({ buyerId: req.user._id, propertyId: property._id }).select('status')
+            : null;
         const reviewed = property.reviews.some(review => String(review.userId) === String(req.user?._id));
         await property.populate('reviews.userId', 'name');
         res.render('property-detail', {
@@ -79,6 +86,8 @@ router.get('/property/:id', async (req, res) => {
             user: req.user,
             reviewEligible,
             reviewed,
+            existingInquiry,
+            inquiryResult: req.query.inquiry,
             reviewResult: req.query.review,
             paystackMode: req.app.locals.paystackMode,
             paystackReady: Boolean(property.landlordId?.payoutSubaccountCode)
@@ -105,7 +114,7 @@ router.get('/my-properties', requireRole('landlord'), async (req, res) => {
 
     try {
         const properties = await Property.find({ landlordId: req.user._id }).sort({ createdAt: -1 });
-        res.render('properties', { properties, user: req.user, landlordView: true });
+        res.render('properties', { properties, user: req.user, landlordView: true, search: '', listingType: '' });
     } catch (err) {
         res.status(500).send(err.message);
     }
@@ -119,12 +128,13 @@ router.post('/add-property', requireRole('landlord'), videoUpload, async (req, r
         }
 
         const { title, description, price, location, address, amenities } = req.body;
+        const listingType = String(req.body.listingType || '');
         const cleanTitle = String(title || '').trim();
         const cleanDescription = String(description || '').trim();
         const cleanLocation = String(location || '').trim();
         const cleanAddress = String(address || '').trim();
         const numericPrice = Number(price);
-        if (!cleanTitle || !cleanDescription || !cleanLocation || !cleanAddress || !Number.isFinite(numericPrice) || numericPrice <= 0) {
+        if (!cleanTitle || !cleanDescription || !cleanLocation || !cleanAddress || !['rent', 'sale'].includes(listingType) || !Number.isFinite(numericPrice) || numericPrice <= 0) {
             return res.status(400).render('add-property', { user: req.user, message: 'Please complete every field with valid information.' });
         }
         const uploadedVideo = req.file ? await uploadPropertyVideo(req.file.buffer) : null;
@@ -133,6 +143,7 @@ router.post('/add-property', requireRole('landlord'), videoUpload, async (req, r
             title: cleanTitle,
             description: cleanDescription,
             price: numericPrice,
+            listingType,
             location: cleanLocation,
             address: cleanAddress,
             amenities: String(amenities || '').split(',').map(a => a.trim()).filter(Boolean),
@@ -160,13 +171,21 @@ router.post('/property/:id/edit', requireRole('landlord'), videoUpload, async (r
     try {
         if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found');
         const { title, description, price, location, address, amenities } = req.body;
+        const listingType = String(req.body.listingType || '');
         const numericPrice = Number(price);
-        if (!String(title || '').trim() || !String(description || '').trim() || !String(location || '').trim() || !String(address || '').trim() || !Number.isFinite(numericPrice) || numericPrice <= 0) {
+        if (!String(title || '').trim() || !String(description || '').trim() || !String(location || '').trim() || !String(address || '').trim() || !['rent', 'sale'].includes(listingType) || !Number.isFinite(numericPrice) || numericPrice <= 0) {
             return res.status(400).send('Please provide valid property details.');
         }
 
         const existingProperty = await Property.findOne({ _id: req.params.id, landlordId: req.user._id });
         if (!existingProperty) return res.status(404).send('Property not found');
+        if (existingProperty.listingType !== listingType) {
+            if (existingProperty.status !== 'available'
+                || await Booking.exists({ propertyId: existingProperty._id })
+                || await PropertyInquiry.exists({ propertyId: existingProperty._id })) {
+                return res.status(409).send('The listing type cannot be changed after inquiries or bookings have started.');
+            }
+        }
 
         const uploadedVideo = req.file ? await uploadPropertyVideo(req.file.buffer) : null;
         const videoUrl = uploadedVideo?.videoUrl || existingProperty.videoUrl;
@@ -174,7 +193,7 @@ router.post('/property/:id/edit', requireRole('landlord'), videoUpload, async (r
 
         const property = await Property.findOneAndUpdate(
             { _id: req.params.id, landlordId: req.user._id },
-            { title: title.trim(), description: description.trim(), price: numericPrice, location: location.trim(), address: address.trim(), amenities: String(amenities || '').split(',').map(a => a.trim()).filter(Boolean), videoUrl, videoPosterUrl, verificationStatus: 'pending' },
+            { title: title.trim(), description: description.trim(), price: numericPrice, listingType, location: location.trim(), address: address.trim(), amenities: String(amenities || '').split(',').map(a => a.trim()).filter(Boolean), videoUrl, videoPosterUrl, verificationStatus: 'pending' },
             { new: true, runValidators: true }
         );
         if (!property) return res.status(404).send('Property not found');
@@ -193,6 +212,8 @@ router.post('/property/:id/reviews', requireRole('student'), async (req, res) =>
     }
 
     try {
+        const property = await Property.findById(req.params.id).select('listingType');
+        if (!property || property.listingType !== 'rent') return res.status(404).send('Rental property not found.');
         const hasPaidBooking = await Booking.exists({ studentId: req.user._id, propertyId: req.params.id, paymentStatus: 'paid' });
         if (!hasPaidBooking) return res.status(403).send('Only students with a paid booking can review this property.');
 
@@ -208,10 +229,15 @@ router.post('/property/:id/reviews', requireRole('student'), async (req, res) =>
 });
 
 router.post('/property/:id/status', requireRole('landlord'), async (req, res) => {
-    const allowedStatuses = ['available', 'rented', 'maintenance'];
-    if (!allowedStatuses.includes(req.body.status)) return res.status(400).send('Invalid property status.');
-    const property = await Property.findOneAndUpdate({ _id: req.params.id, landlordId: req.user._id }, { status: req.body.status }, { new: true });
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
+    const property = await Property.findOne({ _id: req.params.id, landlordId: req.user._id });
     if (!property) return res.status(404).send('Property not found');
+    const allowedStatuses = property.listingType === 'sale'
+        ? ['available', 'sold', 'maintenance']
+        : ['available', 'rented', 'maintenance'];
+    if (!allowedStatuses.includes(req.body.status)) return res.status(400).send('Invalid property status.');
+    property.status = req.body.status;
+    await property.save();
     res.redirect('/dashboard');
 });
 
@@ -223,7 +249,7 @@ router.post('/book-property/:id', requireRole('student'), async (req, res) => {
         }
 
         if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found');
-        const property = await Property.findOne({ _id: req.params.id, status: 'available', verificationStatus: 'verified' });
+        const property = await Property.findOne({ _id: req.params.id, listingType: 'rent', status: 'available', verificationStatus: 'verified' });
         if (!property) return res.status(404).send('This property is not available for booking.');
         const message = String(req.body.message || '').trim();
         if (message.length > 1000) return res.status(400).send('Your message is too long.');

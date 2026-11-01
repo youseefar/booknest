@@ -230,6 +230,10 @@ function getCallbackUrl(req) {
 }
 
 async function initializePaystackCheckout(req, res, booking, property, secretKey) {
+    if (property.listingType !== 'rent') {
+        return res.status(400).send('Online booking payments are only available for rental listings.');
+    }
+
     const landlord = property.landlordId;
     const subaccountCode = landlord?.payoutSubaccountCode;
     if (!subaccountCode || landlord.payoutSubaccountMode !== getPaymentMode()) {
@@ -330,6 +334,7 @@ router.post('/payments/properties/:id/initialize', requireRole('student'), async
         await Booking.syncExpiredSubscriptions();
         const property = await Property.findOne({
             _id: req.params.id,
+            listingType: 'rent',
             status: 'available',
             verificationStatus: 'verified'
         }).populate('landlordId', 'payoutSubaccountCode payoutSubaccountMode');
