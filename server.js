@@ -383,6 +383,7 @@ async function startServer() {
   }
 }
 
+
 startServer().catch(error => {
   console.error('Application startup failed:', error.message);
   process.exitCode = 1;
