@@ -447,12 +447,8 @@ async function initializePaystackCheckout(req, res, booking, property, secretKey
     }
 
     try {
-        const response = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
+        const initialization = await paystackRequest('/transaction/initialize', secretKey, {
             method: 'POST',
-            headers: {
-                Authorization: `Bearer ${secretKey}`,
-                'Content-Type': 'application/json'
-            },
             body: JSON.stringify({
                 email: req.user.email,
                 amount: amountKobo,
@@ -462,13 +458,11 @@ async function initializePaystackCheckout(req, res, booking, property, secretKey
                 reference,
                 callback_url: getCallbackUrl(req),
                 metadata: { booking_id: String(booking._id), property_id: String(property._id) }
-            }),
-            signal: AbortSignal.timeout(15000)
+            })
         });
-        const result = await response.json();
-        const authorizationUrl = result?.data?.authorization_url;
+        const authorizationUrl = initialization?.authorization_url;
 
-        if (!response.ok || !result.status || !authorizationUrl || result.data.reference !== reference) {
+        if (!authorizationUrl || initialization?.reference !== reference) {
             const failed = await Booking.updateOne(
                 { _id: booking._id, paymentReference: reference, paymentStatus: 'pending' },
                 { $set: { paymentStatus: 'failed', paymentAuthorizationUrl: null } }
@@ -719,26 +713,22 @@ router.get('/payments/paystack/callback', async (req, res, next) => {
             return res.redirect(`/my-bookings?payment=success&reference=${encodeURIComponent(reference)}`);
         }
 
-        const response = await fetch(`${PAYSTACK_API}/transaction/verify/${encodeURIComponent(reference)}`, {
-            headers: { Authorization: `Bearer ${secretKey}` },
-            signal: AbortSignal.timeout(15000)
-        });
-        const result = await response.json();
-        const transaction = result?.data;
-        const validPayment = response.ok
-            && result.status === true
-            && isVerifiedPaystackTransaction(booking, reference, transaction);
+        const propertyId = booking.propertyId?._id || booking.propertyId;
+        const transaction = await fetchVerifiedTransaction(reference, secretKey);
+        const validPayment = isVerifiedPaystackTransaction(booking, reference, transaction);
 
         if (!validPayment) {
-            if (response.ok && transaction && terminalPaymentStatuses.has(transaction.status)) {
+            if (transaction && terminalPaymentStatuses.has(transaction.status)) {
                 await Booking.updateOne(
                     { _id: booking._id, paymentReference: reference, paymentStatus: 'pending' },
                     { $set: { paymentStatus: 'failed', paymentAuthorizationUrl: null } }
                 );
-                await Property.updateOne(
-                    { _id: booking.propertyId._id, paymentReservationBookingId: booking._id, status: 'available' },
-                    { $unset: { paymentReservationBookingId: 1, paymentReservationExpiresAt: 1 } }
-                );
+                if (propertyId) {
+                    await Property.updateOne(
+                        { _id: propertyId, paymentReservationBookingId: booking._id, status: 'available' },
+                        { $unset: { paymentReservationBookingId: 1, paymentReservationExpiresAt: 1 } }
+                    );
+                }
                 return res.redirect('/my-bookings?payment=failed');
             }
             return res.redirect('/my-bookings?payment=verify');

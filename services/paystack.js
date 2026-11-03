@@ -2,6 +2,10 @@ const crypto = require('crypto');
 
 const PAYSTACK_API = 'https://api.paystack.co';
 
+function normalizeSecretKey(secretKey) {
+    return typeof secretKey === 'string' ? secretKey.trim() : '';
+}
+
 function getPaymentMode() {
     if (process.env.NODE_ENV !== 'production') return 'test';
     const configuredMode = String(process.env.PAYSTACK_MODE || '').trim().toLowerCase();
@@ -10,13 +14,13 @@ function getPaymentMode() {
 }
 
 function getPaystackSecretKey() {
-    const secretKey = process.env.PAYSTACK_SECRET_KEY || '';
+    const secretKey = normalizeSecretKey(process.env.PAYSTACK_SECRET_KEY || '');
     const requiredPrefix = getPaymentMode() === 'live' ? 'sk_live_' : 'sk_test_';
     return secretKey.startsWith(requiredPrefix) ? secretKey : null;
 }
 
 function paystackConfigurationMessage() {
-    const secretKey = process.env.PAYSTACK_SECRET_KEY || '';
+    const secretKey = normalizeSecretKey(process.env.PAYSTACK_SECRET_KEY || '');
     if (getPaymentMode() === 'test' && secretKey.startsWith('sk_live_')) {
         return 'A live Paystack key cannot be used outside production. Configure a test key beginning with sk_test_.';
     }
@@ -29,8 +33,9 @@ function paystackConfigurationMessage() {
 }
 
 function verifyWebhookSignature(rawBody, signature, secretKey) {
-    if (!Buffer.isBuffer(rawBody) || !secretKey || !/^[a-f\d]{128}$/i.test(String(signature || ''))) return false;
-    const expected = crypto.createHmac('sha512', secretKey).update(rawBody).digest();
+    const normalizedSecretKey = normalizeSecretKey(secretKey);
+    if (!Buffer.isBuffer(rawBody) || !normalizedSecretKey || !/^[a-f\d]{128}$/i.test(String(signature || ''))) return false;
+    const expected = crypto.createHmac('sha512', normalizedSecretKey).update(rawBody).digest();
     const submitted = Buffer.from(signature, 'hex');
     return expected.length === submitted.length && crypto.timingSafeEqual(expected, submitted);
 }
@@ -47,18 +52,23 @@ function isVerifiedPaystackTransaction(booking, reference, transaction) {
 }
 
 async function paystackRequest(endpoint, secretKey, options = {}) {
-    const response = await fetch(`${PAYSTACK_API}${endpoint}`, {
+    const normalizedSecretKey = normalizeSecretKey(secretKey);
+    if (!normalizedSecretKey) throw new Error("Paystack secret key is required.");
+
+    const headers = new Headers(options.headers || {});
+    headers.set("Authorization", "Bearer " + normalizedSecretKey);
+    if (!headers.has('Content-Type') && (options.method === 'POST' || options.method === 'PUT' || options.method === 'PATCH')) {
+        headers.set("Content-Type", "application/json");
+    }
+
+    const response = await fetch(PAYSTACK_API + endpoint, {
         ...options,
-        headers: {
-            Authorization: `Bearer ${secretKey}`,
-            'Content-Type': 'application/json',
-            ...options.headers
-        },
+        headers,
         signal: options.signal || AbortSignal.timeout(15000)
     });
     const result = await response.json();
     if (!response.ok || result?.status !== true) {
-        throw new Error(result?.message || 'Paystack request failed.');
+        throw new Error(result?.message || "Paystack request failed.");
     }
     return result.data;
 }

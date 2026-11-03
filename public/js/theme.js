@@ -320,7 +320,7 @@
             label.id = `${input.id}-strength`;
             label.setAttribute('role', 'status');
             label.setAttribute('aria-live', 'polite');
-            label.textContent = 'Use at least 6 characters';
+            label.textContent = 'Use 8+ characters and a number';
 
             strength.append(bars, label);
             const passwordField = input.closest('.password-field');
@@ -341,7 +341,7 @@
 
                 if (!value) {
                     strength.className = 'password-strength is-empty';
-                    label.textContent = 'Use at least 6 characters';
+                    label.textContent = 'Use 8+ characters and a number';
                     return;
                 }
 

@@ -8,12 +8,8 @@ const Booking = require('../models/Booking');
 const PropertyInquiry = require('../models/PropertyInquiry');
 const { requireAuth } = require('../middleware/auth');
 const { isEmailConfigured, sendEmail } = require('../services/email');
+const { normalizeEmail, isStrongPassword, getSafePropertyReturnPath } = require('../services/auth-validation');
 const router = express.Router();
-
-const getPropertyReturnPath = value => {
-  const match = /^\/property\/([a-f\d]{24})$/i.exec(String(value || ''));
-  return match ? `/property/${match[1]}` : '';
-};
 
 // Register Page
 router.get('/register', (req, res) => {
@@ -21,7 +17,7 @@ router.get('/register', (req, res) => {
     mode: 'student',
     role: 'student',
       pageTitle: 'Register',
-      returnTo: getPropertyReturnPath(req.query.returnTo)
+      returnTo: getSafePropertyReturnPath(req.query.returnTo)
   });
 });
 
@@ -30,7 +26,7 @@ router.get('/register/landlord', (req, res) => {
   res.render('register-landlord', {
     role: 'landlord',
     pageTitle: 'Property Owner Registration',
-    returnTo: getPropertyReturnPath(req.query.returnTo)
+    returnTo: getSafePropertyReturnPath(req.query.returnTo)
   });
 });
 
@@ -38,10 +34,10 @@ router.get('/register/landlord', (req, res) => {
 router.post('/register', async (req, res, next) => {
   try {
     const nameValue = String(req.body.name || '').trim();
-    const emailValue = String(req.body.email || '').trim().toLowerCase();
+    const emailValue = normalizeEmail(req.body.email);
     let role = String(req.body.role || 'student').trim();
     const phoneValue = String(req.body.phone || '').trim();
-    const returnTo = getPropertyReturnPath(req.body.returnTo);
+    const returnTo = getSafePropertyReturnPath(req.body.returnTo);
     const { password, confirmPassword } = req.body;
 
     if (!['student', 'landlord'].includes(role)) {
@@ -49,11 +45,11 @@ router.post('/register', async (req, res, next) => {
     }
     const registrationView = role === 'landlord' ? 'register-landlord' : 'register';
 
-    if (nameValue.length < 2 || !emailValue.includes('@') || String(password || '').length < 6 || (role === 'landlord' && phoneValue.length < 7)) {
+    if (nameValue.length < 2 || !emailValue.includes('@') || !isStrongPassword(password) || (role === 'landlord' && phoneValue.length < 7)) {
       return res.status(400).render(registrationView, {
         message: role === 'landlord'
-          ? 'Please provide a valid name, email, password, and phone number.'
-          : 'Please provide a valid name, email, and password.',
+          ? 'Please provide a valid name, email, and a strong password with at least 8 characters and one number.'
+          : 'Please provide a valid name, email, and a strong password with at least 8 characters and one number.',
         mode: role === 'landlord' ? 'landlord' : 'student',
         role,
         pageTitle: role === 'landlord' ? 'Property Owner Registration' : 'Register',
@@ -109,7 +105,7 @@ router.post('/register', async (req, res, next) => {
         mode: isLandlord ? 'landlord' : 'student',
         role,
         pageTitle: isLandlord ? 'Property Owner Registration' : 'Register',
-        returnTo: getPropertyReturnPath(req.body.returnTo)
+        returnTo: getSafePropertyReturnPath(req.body.returnTo)
       });
     }
     return next(err);
@@ -118,7 +114,7 @@ router.post('/register', async (req, res, next) => {
 
 // Login Page
 router.get('/login', (req, res) => {
-  res.render('login', { returnTo: getPropertyReturnPath(req.query.returnTo) });
+  res.render('login', { returnTo: getSafePropertyReturnPath(req.query.returnTo) });
 });
 
 // Forgot password page
@@ -128,7 +124,7 @@ router.get('/forgot-password', (req, res) => {
 
 // Create a short-lived password reset token. The response stays generic to avoid exposing account existence.
 router.post('/forgot-password', async (req, res, next) => {
-  const emailValue = String(req.body.email || '').trim().toLowerCase();
+  const emailValue = normalizeEmail(req.body.email);
   const emailConfigured = isEmailConfigured();
   const response = {
     message: emailConfigured
@@ -221,8 +217,8 @@ router.get('/reset-password/:token', async (req, res) => {
 router.post('/reset-password/:token', async (req, res) => {
   const password = String(req.body.password || '');
   const confirmPassword = String(req.body.confirmPassword || '');
-  if (password.length < 6 || password !== confirmPassword) {
-    return res.status(400).render('reset-password', { token: req.params.token, message: password !== confirmPassword ? 'Passwords do not match.' : 'Password must be at least 6 characters.' });
+  if (!isStrongPassword(password) || password !== confirmPassword) {
+    return res.status(400).render('reset-password', { token: req.params.token, message: password !== confirmPassword ? 'Passwords do not match.' : 'Password must be at least 8 characters and include a number.' });
   }
 
   const tokenHash = crypto.createHash('sha256').update(req.params.token).digest('hex');
@@ -245,7 +241,7 @@ router.get('/profile', requireAuth, (req, res) => {
 router.post('/profile', requireAuth, async (req, res, next) => {
   try {
     const nameValue = String(req.body.name || '').trim();
-    const emailValue = String(req.body.email || '').trim().toLowerCase();
+    const emailValue = normalizeEmail(req.body.email);
     const phoneValue = String(req.body.phone || '').trim();
     if (nameValue.length < 2 || !emailValue.includes('@')) return res.status(400).render('profile', { user: req.user, message: 'Enter a valid name and email address.' });
 
@@ -266,8 +262,8 @@ router.post('/profile', requireAuth, async (req, res, next) => {
 router.post('/profile/password', requireAuth, async (req, res) => {
   const { currentPassword, newPassword, confirmPassword } = req.body;
   const passwordMatches = await bcryptjs.compare(String(currentPassword || ''), req.user.password);
-  if (!passwordMatches || String(newPassword || '').length < 6 || newPassword !== confirmPassword) {
-    return res.status(400).render('profile', { user: req.user, message: !passwordMatches ? 'Current password is incorrect.' : newPassword !== confirmPassword ? 'New passwords do not match.' : 'New password must be at least 6 characters.' });
+  if (!passwordMatches || !isStrongPassword(newPassword) || newPassword !== confirmPassword) {
+    return res.status(400).render('profile', { user: req.user, message: !passwordMatches ? 'Current password is incorrect.' : newPassword !== confirmPassword ? 'New passwords do not match.' : 'New password must be at least 8 characters and include a number.' });
   }
 
   req.user.password = newPassword;
@@ -277,7 +273,7 @@ router.post('/profile/password', requireAuth, async (req, res) => {
 
 // Login Post
 router.post('/login', (req, res, next) => {
-  const returnTo = getPropertyReturnPath(req.body.returnTo);
+  const returnTo = getSafePropertyReturnPath(req.body.returnTo);
   passport.authenticate('local', (err, user, info) => {
     if (err) return next(err);
     if (!user) return res.status(401).render('login', { message: info?.message || 'Invalid email or password.', returnTo });
