@@ -348,7 +348,13 @@
                 const level = score <= 1 ? 'weak' : score === 2 ? 'fair' : score === 3 ? 'good' : 'strong';
                 strength.className = `password-strength is-${level}`;
                 strength.style.setProperty('--strength-level', String(Math.max(score, 1)));
-                label.textContent = `${level[0].toUpperCase()}${level.slice(1)}`;
+                label.textContent = value.length < 8
+                    ? 'Use at least 8 characters'
+                    : !/[A-Za-z]/.test(value)
+                        ? 'Add at least one letter'
+                        : !/\d/.test(value)
+                            ? 'Add at least one number'
+                            : `${level[0].toUpperCase()}${level.slice(1)}`;
             });
         });
 
@@ -372,8 +378,9 @@
             const updateMatch = () => {
                 const hasConfirmation = confirmInput.value.length > 0;
                 const matches = hasConfirmation && passwordInput.value === confirmInput.value;
-                const minimumLength = Math.max(passwordInput.minLength || 0, 6);
-                const passwordIsLongEnough = passwordInput.value.length >= minimumLength;
+                const passwordIsValid = passwordInput.validity.valid
+                    && /[A-Za-z]/.test(passwordInput.value)
+                    && /\d/.test(passwordInput.value);
 
                 if (!hasConfirmation) {
                     matchStatus.className = 'password-match is-empty';
@@ -387,7 +394,7 @@
                 }
 
                 confirmInput.setCustomValidity(hasConfirmation && !matches ? 'Passwords do not match.' : '');
-                if (submitButton) submitButton.disabled = !(matches && passwordIsLongEnough);
+                if (submitButton) submitButton.disabled = !(matches && passwordIsValid);
             };
 
             passwordInput.addEventListener('input', updateMatch);

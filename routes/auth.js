@@ -8,7 +8,13 @@ const Booking = require('../models/Booking');
 const PropertyInquiry = require('../models/PropertyInquiry');
 const { requireAuth } = require('../middleware/auth');
 const { isEmailConfigured, sendEmail } = require('../services/email');
-const { normalizeEmail, isStrongPassword, getSafePropertyReturnPath } = require('../services/auth-validation');
+const {
+  getRegistrationRole,
+  normalizeEmail,
+  isStrongPassword,
+  getSafePropertyReturnPath,
+  isLocalDevelopmentResetAllowed
+} = require('../services/auth-validation');
 const router = express.Router();
 
 // Register Page
@@ -35,14 +41,11 @@ router.post('/register', async (req, res, next) => {
   try {
     const nameValue = String(req.body.name || '').trim();
     const emailValue = normalizeEmail(req.body.email);
-    let role = String(req.body.role || 'student').trim();
+    const role = getRegistrationRole(req.body.role);
     const phoneValue = String(req.body.phone || '').trim();
     const returnTo = getSafePropertyReturnPath(req.body.returnTo);
     const { password, confirmPassword } = req.body;
 
-    if (!['student', 'landlord'].includes(role)) {
-      role = 'student';
-    }
     const registrationView = role === 'landlord' ? 'register-landlord' : 'register';
 
     if (nameValue.length < 2 || !emailValue.includes('@') || !isStrongPassword(password) || (role === 'landlord' && phoneValue.length < 7)) {
@@ -97,8 +100,7 @@ router.post('/register', async (req, res, next) => {
     return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
   } catch (err) {
     if (err.code === 11000) {
-      const requestedRole = String(req.body.role || 'student').trim();
-      const role = ['student', 'landlord'].includes(requestedRole) ? requestedRole : 'student';
+      const role = getRegistrationRole(req.body.role);
       const isLandlord = role === 'landlord';
       return res.status(400).render(isLandlord ? 'register-landlord' : 'register', {
         message: 'Email already registered.',
@@ -126,15 +128,21 @@ router.get('/forgot-password', (req, res) => {
 router.post('/forgot-password', async (req, res, next) => {
   const emailValue = normalizeEmail(req.body.email);
   const emailConfigured = isEmailConfigured();
+  const localDevelopmentResetAllowed = isLocalDevelopmentResetAllowed(
+    process.env,
+    req.socket?.remoteAddress
+  );
   const response = {
     message: emailConfigured
       ? 'If an account uses that email, reset instructions will be sent. If you do not receive them, check your spam folder or try again later.'
-      : 'In development, a reset link appears below if the account matches.'
+      : localDevelopmentResetAllowed
+        ? 'In local development, a reset link appears below if the account matches.'
+        : 'Password reset is temporarily unavailable. Please try again later.'
   };
   let resetUser = null;
 
   try {
-    if (process.env.NODE_ENV === 'production' && !emailConfigured) {
+    if (!emailConfigured && !localDevelopmentResetAllowed) {
       const error = new Error('Password reset email delivery is not configured.');
       error.code = 'EMAIL_NOT_CONFIGURED';
       error.status = 503;
@@ -150,8 +158,13 @@ router.post('/forgot-password', async (req, res, next) => {
       resetUser = user;
 
       if (emailConfigured) {
-        const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
-        const resetUrl = new URL(`/reset-password/${rawToken}`, baseUrl).toString();
+        if (!process.env.APP_URL) {
+          const error = new Error('APP_URL must be configured for password reset email delivery.');
+          error.code = 'APP_URL_NOT_CONFIGURED';
+          error.status = 503;
+          throw error;
+        }
+        const resetUrl = new URL(`/reset-password/${rawToken}`, process.env.APP_URL).toString();
         try {
           await sendEmail({
             to: user.email,

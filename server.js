@@ -18,6 +18,7 @@ const propertyInquiryRoutes = require('./routes/property-inquiry');
 const User = require('./models/User');
 const bcryptjs = require('bcryptjs');
 const validateRequestBody = require('./middleware/validate-request-body');
+const { normalizeEmail } = require('./services/auth-validation');
 
 const app = express();
 const { getPaymentMode } = require('./services/paystack');
@@ -125,7 +126,7 @@ app.use((req, res, next) => {
 
 passport.use(new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
   try {
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ email: normalizeEmail(email) });
     if (!user) return done(null, false, { message: 'Invalid email or password' });
 
     const passwordMatches = await bcryptjs.compare(password, user.password);
@@ -308,6 +309,9 @@ let httpServer;
 let mongoRetryTimer;
 
 function validateEnvironment() {
+  if (!['development', 'test', 'production'].includes(process.env.NODE_ENV)) {
+    throw new Error('NODE_ENV must be explicitly set to development, test, or production.');
+  }
   if (!mongoUri) throw new Error('MONGODB_URI must be configured.');
   if (!sessionOptions.secret || sessionOptions.secret.length < 32) {
     throw new Error('SESSION_SECRET must contain at least 32 characters.');

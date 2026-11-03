@@ -42,11 +42,22 @@ function verifyWebhookSignature(rawBody, signature, secretKey) {
 
 function isVerifiedPaystackTransaction(booking, reference, transaction) {
     const propertyId = booking.propertyId?._id || booking.propertyId;
-    return transaction?.status === 'success'
+    const expectedEmail = String(booking.studentId?.email ?? '').trim().toLowerCase();
+    const transactionEmail = String(transaction?.customer?.email ?? '').trim().toLowerCase();
+    return typeof reference === 'string'
+        && reference.length > 0
+        && Number.isSafeInteger(booking.paymentAmountKobo)
+        && booking.paymentAmountKobo > 0
+        && Number.isSafeInteger(transaction?.amount)
+        && transaction.amount > 0
+        && Boolean(booking._id)
+        && Boolean(propertyId)
+        && transaction?.status === 'success'
         && transaction.reference === reference
         && transaction.amount === booking.paymentAmountKobo
         && transaction.currency === 'NGN'
-        && transaction.customer?.email?.toLowerCase() === booking.studentId?.email?.toLowerCase()
+        && expectedEmail !== ''
+        && transactionEmail === expectedEmail
         && String(transaction.metadata?.booking_id) === String(booking._id)
         && String(transaction.metadata?.property_id) === String(propertyId);
 }
@@ -61,14 +72,28 @@ async function paystackRequest(endpoint, secretKey, options = {}) {
         headers.set("Content-Type", "application/json");
     }
 
+    const timeoutSignal = AbortSignal.timeout(15000);
+    const signal = options.signal
+        ? AbortSignal.any([options.signal, timeoutSignal])
+        : timeoutSignal;
     const response = await fetch(PAYSTACK_API + endpoint, {
         ...options,
         headers,
-        signal: options.signal || AbortSignal.timeout(15000)
+        signal
     });
-    const result = await response.json();
+
+    let result;
+    try {
+        result = await response.json();
+    } catch (cause) {
+        throw new Error('Paystack returned an invalid response.', { cause });
+    }
+
     if (!response.ok || result?.status !== true) {
-        throw new Error(result?.message || "Paystack request failed.");
+        const message = typeof result?.message === 'string' && result.message.trim()
+            ? result.message
+            : 'Paystack request failed.';
+        throw new Error(message);
     }
     return result.data;
 }
