@@ -24,6 +24,7 @@ const app = express();
 const { getPaymentMode } = require('./services/paystack');
 const { isDatabaseError, isStorageLimitError } = require('./services/database-errors');
 const { isOpaqueSameOriginNavigation } = require('./services/request-origin');
+const { isCloudinaryConfigured, processVideoCleanupQueue } = require('./services/cloudinary-videos');
 app.locals.paystackMode = getPaymentMode();
 mongoose.set('bufferCommands', false);
 app.set('trust proxy', 1);
@@ -161,18 +162,37 @@ const sessionOptions = {
 };
 
 let sessionMiddleware = null;
+let cloudinaryCleanupTimer = null;
+
+function startCloudinaryCleanupWorker() {
+  if (cloudinaryCleanupTimer || !isCloudinaryConfigured()) return;
+  const runCleanup = () => {
+    processVideoCleanupQueue().catch(error => {
+      console.error('Cloudinary video cleanup worker failed:', {
+        name: error.name,
+        code: error.code
+      });
+    });
+  };
+  runCleanup();
+  cloudinaryCleanupTimer = setInterval(runCleanup, 60 * 1000);
+  cloudinaryCleanupTimer.unref();
+}
 
 function enableMongoSessionStore() {
-  if (sessionMiddleware || mongoose.connection.readyState !== 1) return;
-  const mongoSessionStore = MongoStore.create({
-    client: mongoose.connection.getClient(),
-    collectionName: 'sessions',
-    ttl: 7 * 24 * 60 * 60
-  });
-  mongoSessionStore.on('error', error => {
-    console.error('MongoDB session store error:', error.name);
-  });
-  sessionMiddleware = session({ ...sessionOptions, store: mongoSessionStore });
+  if (mongoose.connection.readyState !== 1) return;
+  if (!sessionMiddleware) {
+    const mongoSessionStore = MongoStore.create({
+      client: mongoose.connection.getClient(),
+      collectionName: 'sessions',
+      ttl: 7 * 24 * 60 * 60
+    });
+    mongoSessionStore.on('error', error => {
+      console.error('MongoDB session store error:', error.name);
+    });
+    sessionMiddleware = session({ ...sessionOptions, store: mongoSessionStore });
+  }
+  startCloudinaryCleanupWorker();
 }
 
 app.use((req, res, next) => {

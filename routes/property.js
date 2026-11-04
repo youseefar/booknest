@@ -8,7 +8,77 @@ const { SORT_OPTIONS, getPagination, parsePage, parseSort } = require('../servic
 const { parseSavedPropertyIds } = require('../services/saved-property-ids');
 const { parseOptionalRoomCount } = require('../services/property-details');
 const { normalizePropertySearch } = require('../services/property-search');
+const { Readable } = require('node:stream');
+const {
+    cleanupOrQueueVideos,
+    isCloudinaryConfigured,
+    uploadPropertyVideo
+} = require('../services/cloudinary-videos');
 const router = express.Router();
+
+async function parseVideoUpload(req, res, next) {
+    try {
+        const declaredLength = Number(req.get('content-length') || 0);
+        const maximumRequestBytes = 50 * 1024 * 1024 + 64 * 1024;
+        if (declaredLength > maximumRequestBytes) {
+            const error = new Error('Video files must be 50 MB or smaller.');
+            error.status = 413;
+            return next(error);
+        }
+
+        let receivedBytes = 0;
+        const body = Readable.toWeb(req).pipeThrough(new TransformStream({
+            transform(chunk, controller) {
+                receivedBytes += chunk.byteLength;
+                if (receivedBytes > maximumRequestBytes) {
+                    const error = new Error('Video files must be 50 MB or smaller.');
+                    error.status = 413;
+                    throw error;
+                }
+                controller.enqueue(chunk);
+            }
+        }));
+        const multipartRequest = new Request('http://localhost/video-upload', {
+            method: 'POST',
+            headers: { 'content-type': req.get('content-type') || '' },
+            body,
+            duplex: 'half'
+        });
+        const formData = await multipartRequest.formData();
+        const fields = {};
+        let uploadedFile = null;
+        for (const [fieldName, value] of formData.entries()) {
+            if (fieldName === 'video' && typeof value.arrayBuffer === 'function') {
+                if (uploadedFile) {
+                    const error = new Error('Submit only one video file.');
+                    error.status = 400;
+                    return next(error);
+                }
+                if (value.size > 0) uploadedFile = value;
+                continue;
+            }
+            if (typeof value !== 'string' || Object.hasOwn(fields, fieldName)) {
+                const error = new Error('The property form contains unsupported fields.');
+                error.status = 400;
+                return next(error);
+            }
+            fields[fieldName] = value;
+        }
+
+        req.body = fields;
+        if (uploadedFile) req.file = uploadedFile;
+        return next();
+    } catch (error) {
+        if (!error.status) error.status = 400;
+        if (error.status < 500) return res.status(error.status).send(error.message);
+        return next(error);
+    }
+}
+
+function handleVideoUploadError(error, req, res, next) {
+    if (error.status && error.status < 500) return res.status(error.status).send(error.message);
+    return next(error);
+}
 
 router.get('/saved-properties', async (req, res, next) => {
     try {
@@ -173,7 +243,8 @@ router.get('/my-properties', requireRole('landlord'), async (req, res, next) => 
 });
 
 // Add property post
-router.post('/add-property', requireRole('landlord'), async (req, res, next) => {
+router.post('/add-property', requireRole('landlord'), parseVideoUpload, handleVideoUploadError, async (req, res, next) => {
+    let uploadedVideo = null;
     try {
         if (req.user.role !== 'landlord') {
             return res.status(403).send('Only landlords can add properties');
@@ -196,6 +267,13 @@ router.post('/add-property', requireRole('landlord'), async (req, res, next) => 
             || !['rent', 'sale'].includes(listingType) || !Number.isFinite(numericPrice) || numericPrice <= 0) {
             return res.status(400).render('add-property', { user: req.user, message: 'Please complete every field with valid information.' });
         }
+        if (req.file) {
+            if (!isCloudinaryConfigured()) {
+                return res.status(503).send('Video uploads are temporarily unavailable.');
+            }
+            uploadedVideo = await uploadPropertyVideo(req.file);
+        }
+
         const newProperty = new Property({
             title: cleanTitle,
             description: cleanDescription,
@@ -206,12 +284,25 @@ router.post('/add-property', requireRole('landlord'), async (req, res, next) => 
             bedrooms,
             bathrooms,
             amenities: cleanAmenities,
+            videoUrl: uploadedVideo?.videoUrl || null,
+            videoPublicId: uploadedVideo?.videoPublicId || null,
+            videoFormat: uploadedVideo?.videoFormat || null,
             landlordId: req.user._id
         });
 
         await newProperty.save();
         res.redirect('/dashboard');
     } catch (err) {
+        if (uploadedVideo) {
+            try {
+                await cleanupOrQueueVideos([uploadedVideo.videoPublicId]);
+            } catch (cleanupError) {
+                console.error('Unable to queue an unlinked Cloudinary video:', {
+                    name: cleanupError.name,
+                    code: cleanupError.code
+                });
+            }
+        }
         return next(err);
     }
 });
@@ -224,7 +315,7 @@ router.get('/property/:id/edit', requireRole('landlord'), async (req, res) => {
     if (property.paymentReservationBookingId) {
         return res.status(409).send('This property has an active payment and cannot be changed until checkout finishes.');
     }
-    res.render('edit-property', { property, user: req.user });
+    res.render('edit-property', { property, user: req.user, videoResult: req.query.video });
 });
 
 router.post('/property/:id/edit', requireRole('landlord'), async (req, res, next) => {
@@ -270,6 +361,95 @@ router.post('/property/:id/edit', requireRole('landlord'), async (req, res, next
         res.redirect('/dashboard');
     } catch (err) {
         return next(err);
+    }
+});
+
+router.post('/property/:id/video', requireRole('landlord'), parseVideoUpload, handleVideoUploadError, async (req, res, next) => {
+    let uploadedVideo = null;
+    try {
+        if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
+        if (!req.file) return res.status(400).send('Choose a video to upload.');
+        if (!isCloudinaryConfigured()) return res.status(503).send('Video uploads are temporarily unavailable.');
+
+        const property = await Property.findOne({ _id: req.params.id, landlordId: req.user._id });
+        if (!property) return res.status(404).send('Property not found.');
+        if (property.paymentReservationBookingId) {
+            return res.status(409).send('This property has an active payment and its video cannot be changed.');
+        }
+
+        uploadedVideo = await uploadPropertyVideo(req.file);
+        const previousProperty = await Property.findOneAndUpdate(
+            {
+                _id: property._id,
+                landlordId: req.user._id,
+                $or: [{ paymentReservationBookingId: null }, { paymentReservationBookingId: { $exists: false } }]
+            },
+            {
+                $set: {
+                    videoUrl: uploadedVideo.videoUrl,
+                    videoPublicId: uploadedVideo.videoPublicId,
+                    videoFormat: uploadedVideo.videoFormat,
+                    verificationStatus: 'pending'
+                }
+            },
+            { new: false, runValidators: true }
+        );
+        if (!previousProperty) {
+            const error = new Error('This property changed while the video was uploading. Try again.');
+            error.status = 409;
+            throw error;
+        }
+
+        if (previousProperty.videoPublicId && previousProperty.videoPublicId !== uploadedVideo.videoPublicId) {
+            await cleanupOrQueueVideos([previousProperty.videoPublicId]);
+        }
+        return res.redirect(`/property/${property._id}/edit?video=updated`);
+    } catch (error) {
+        if (uploadedVideo) {
+            try {
+                const stillReferenced = await Property.exists({ videoPublicId: uploadedVideo.videoPublicId });
+                if (!stillReferenced) await cleanupOrQueueVideos([uploadedVideo.videoPublicId]);
+            } catch (cleanupError) {
+                console.error('Unable to clean up an unlinked Cloudinary video:', {
+                    name: cleanupError.name,
+                    code: cleanupError.code
+                });
+            }
+        }
+        if (error.status && error.status < 500) return res.status(error.status).send(error.message);
+        return next(error);
+    }
+});
+
+router.post('/property/:id/video/delete', requireRole('landlord'), async (req, res, next) => {
+    try {
+        if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
+        const existingProperty = await Property.findOne({
+            _id: req.params.id,
+            landlordId: req.user._id
+        }).select('videoPublicId');
+        if (!existingProperty) return res.status(404).send('Property not found.');
+        const property = await Property.findOneAndUpdate(
+            {
+                _id: req.params.id,
+                landlordId: req.user._id,
+                $or: [{ paymentReservationBookingId: null }, { paymentReservationBookingId: { $exists: false } }]
+            },
+            { $set: { videoUrl: null, videoPublicId: null, videoFormat: null, verificationStatus: 'pending' } },
+            { new: false }
+        );
+        if (!property) {
+            const exists = await Property.exists({ _id: req.params.id, landlordId: req.user._id });
+            if (!exists) return res.status(404).send('Property not found.');
+            return res.status(409).send('This property has an active payment and its video cannot be changed.');
+        }
+
+        if (property.videoPublicId) {
+            await cleanupOrQueueVideos([property.videoPublicId]);
+        }
+        return res.redirect(`/property/${property._id}/edit?video=deleted`);
+    } catch (error) {
+        return next(error);
     }
 });
 

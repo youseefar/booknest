@@ -45,6 +45,42 @@
             </div>
         </div>
     </div>
-</main>
+    <section class="glass-card form-card p-4 p-lg-5 mt-4 mb-5">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+            <div>
+                <span class="eyebrow text-uppercase">Listing media</span>
+                <h2 class="h4 mb-1">Property video</h2>
+                <p class="text-muted mb-0">Upload an MP4, MOV, or WebM video up to 50 MB.</p>
+            </div>
+            <% if (property.videoUrl) { %>
+                <span class="badge text-bg-success">Video added</span>
+            <% } %>
+        </div>
+        <% if (typeof videoResult !== 'undefined' && videoResult === 'updated') { %>
+            <div class="alert alert-success" role="status">Property video updated. The listing is waiting for verification.</div>
+        <% } else if (typeof videoResult !== 'undefined' && videoResult === 'deleted') { %>
+            <div class="alert alert-success" role="status">Property video removed.</div>
+        <% } %>
+        <% if (property.videoUrl) { %>
+            <video class="property-video-manage mb-3" controls preload="none" playsinline>
+                <source src="<%= property.videoUrl %>" type="video/<%= property.videoFormat || 'mp4' %>">
+                Your browser does not support video playback.
+            </video>
+        <% } %>
+        <form method="POST" action="/property/<%= property._id %>/video" enctype="multipart/form-data" class="row g-3 align-items-end">
+            <div class="col-lg-8">
+                <label class="form-label" for="property-video"><%= property.videoUrl ? 'Replace video' : 'Choose video' %></label>
+                <input class="form-control" id="property-video" type="file" name="video" accept="video/mp4,video/quicktime,video/webm" required>
+            </div>
+            <div class="col-lg-4">
+                <button class="btn btn-primary w-100" type="submit"><i class="bi bi-cloud-upload me-2"></i><%= property.videoUrl ? 'Upload replacement' : 'Upload video' %></button>
+            </div>
+        </form>
+        <% if (property.videoUrl) { %>
+            <form method="POST" action="/property/<%= property._id %>/video/delete" class="mt-3" data-confirm-title="Remove property video?" data-confirm-message="This removes the video from the listing and queues its Cloudinary asset for deletion." data-confirm-action="Remove video" data-confirm-variant="danger">
+                <button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash3 me-2"></i>Remove video</button>
+            </form>
+        <% } %>
+    </section>
     <%- include('partials/legal-footer') %>
 </body></html>

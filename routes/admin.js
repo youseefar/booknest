@@ -7,6 +7,9 @@ const Booking = require('../models/Booking');
 const PropertyInquiry = require('../models/PropertyInquiry');
 const { getPaystackSecretKey, paystackConfigurationMessage, paystackRequest } = require('../services/paystack');
 const { requireRole } = require('../middleware/auth');
+const {
+    cleanupOrQueueVideos
+} = require('../services/cloudinary-videos');
 
 const router = express.Router();
 
@@ -146,6 +149,9 @@ router.post('/admin/properties/:id/manage', requireRole('admin'), async (req, re
 });
 
 router.post('/admin/properties/:id/delete', requireRole('admin'), async (req, res) => {
+    const existingProperty = await Property.findById(req.params.id).select('videoPublicId');
+    if (!existingProperty) return res.status(404).send('Property not found.');
+
     const property = await Property.findOneAndDelete({
         _id: req.params.id,
         $or: [{ paymentReservationBookingId: null }, { paymentReservationBookingId: { $exists: false } }]
@@ -155,6 +161,7 @@ router.post('/admin/properties/:id/delete', requireRole('admin'), async (req, re
         if (!exists) return res.status(404).send('Property not found.');
         return res.status(409).send('This property has an active payment and cannot be deleted until checkout finishes.');
     }
+    await cleanupOrQueueVideos([property.videoPublicId]);
     await Booking.deleteMany({ propertyId: property._id });
     await PropertyInquiry.deleteMany({ propertyId: property._id });
     res.redirect('/admin');
@@ -167,7 +174,7 @@ router.post('/admin/users/:id/delete', requireRole('admin'), async (req, res) =>
     if (!targetUser) return res.status(404).send('User not found.');
     if (targetUser.role === 'admin') return res.status(403).send('Admin accounts cannot be deleted here.');
 
-    const ownedProperties = await Property.find({ landlordId: targetUser._id }).select('_id');
+    const ownedProperties = await Property.find({ landlordId: targetUser._id }).select('_id videoPublicId');
     const propertyIds = ownedProperties.map(property => property._id);
     if (await Property.exists({ landlordId: targetUser._id, paymentReservationBookingId: { $ne: null } })
         || await Booking.exists({ studentId: targetUser._id, paymentStatus: 'pending' })) {
@@ -176,6 +183,7 @@ router.post('/admin/users/:id/delete', requireRole('admin'), async (req, res) =>
     await Booking.deleteMany({ $or: [{ studentId: targetUser._id }, { propertyId: { $in: propertyIds } }] });
     await PropertyInquiry.deleteMany({ $or: [{ buyerId: targetUser._id }, { propertyId: { $in: propertyIds } }] });
     await Property.deleteMany({ landlordId: targetUser._id });
+    await cleanupOrQueueVideos(ownedProperties.map(property => property.videoPublicId));
     await User.findByIdAndDelete(targetUser._id);
     res.redirect('/admin');
 });

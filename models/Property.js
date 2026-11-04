@@ -54,6 +54,19 @@ const propertySchema = new mongoose.Schema({
     images: [{
         type: String
     }],
+    videoUrl: {
+        type: String,
+        default: null
+    },
+    videoPublicId: {
+        type: String,
+        default: null
+    },
+    videoFormat: {
+        type: String,
+        enum: ['mp4', 'mov', 'webm', null],
+        default: null
+    },
     paymentReservationBookingId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Booking',
@@ -89,6 +102,7 @@ const propertySchema = new mongoose.Schema({
 propertySchema.index({ status: 1, verificationStatus: 1, createdAt: -1 });
 propertySchema.index({ verificationStatus: 1, createdAt: 1 });
 propertySchema.index({ landlordId: 1, createdAt: -1 });
+propertySchema.index({ videoPublicId: 1 });
 propertySchema.index(
     { title: 'text', location: 'text', address: 'text' },
     { name: 'property_text_search', weights: { title: 5, location: 3, address: 1 } }

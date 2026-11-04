@@ -38,7 +38,7 @@
                         <div class="alert alert-warning"><%= message %></div>
                     <% } %>
 
-                    <form method="POST" action="/add-property" class="row g-3">
+                    <form method="POST" action="/add-property" class="row g-3" enctype="multipart/form-data">
                         <div class="col-md-12">
                             <label class="form-label" for="title">Property title</label>
                             <input class="form-control" id="title" type="text" name="title" maxlength="120" placeholder="e.g. Spacious family home" required>
@@ -84,6 +84,12 @@
                         <div class="col-12">
                             <label class="form-label" for="amenities">Amenities <span class="text-muted">(optional)</span></label>
                             <input class="form-control" id="amenities" type="text" name="amenities" placeholder="WiFi, water, parking, generator (optional)">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label" for="video">Property video <span class="text-muted">(optional)</span></label>
+                            <input class="form-control" id="video" type="file" name="video" accept="video/mp4,video/quicktime,video/webm">
+                            <div class="form-text">MP4, MOV, or WebM · maximum 50 MB. Images are not accepted as uploads.</div>
                         </div>
 
                         <div class="col-12 d-grid gap-2 d-md-flex justify-content-md-between pt-3">

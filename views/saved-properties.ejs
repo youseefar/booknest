@@ -38,7 +38,13 @@
                     <article class="property-card h-100 overflow-hidden shadow-sm border-0">
                         <a class="property-card-overlay" href="/property/<%= property._id %>" aria-label="View details for <%= property.title %>"></a>
                         <div class="property-image position-relative">
-                            <% if (property.images && property.images.length) { %>
+                            <% if (property.videoUrl) { %>
+                                <video class="property-card-video" data-lazy-video data-video-preview preload="none" muted loop playsinline aria-hidden="true">
+                                    <source src="<%= property.videoUrl %>" type="video/<%= property.videoFormat || 'mp4' %>">
+                                </video>
+                                <% if (property.images && property.images.length) { %><img src="<%= property.images[0] %>" alt="" class="property-video-poster" loading="lazy"><% } %>
+                                <span class="property-video-label"><i class="bi bi-play-circle-fill me-1"></i>Video tour</span>
+                            <% } else if (property.images && property.images.length) { %>
                                 <img src="<%= property.images[0] %>" alt="<%= property.title %>" class="w-100 h-100 object-fit-cover" loading="lazy">
                             <% } else { %>
                                 <div class="d-flex align-items-center justify-content-center w-100 h-100 bg-gradient-rent text-white">
@@ -75,6 +81,7 @@
         </div>
     </main>
     <script src="/js/wishlist.js"></script>
+    <script src="/js/lazy-videos.js" defer></script>
     <%- include('partials/legal-footer') %>
 </body>
 </html>
