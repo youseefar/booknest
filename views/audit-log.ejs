@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/svg+xml" href="/jacobrent-mark.svg">
+    <title>Audit log - Jacob Estate</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="/js/theme.js"></script>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="bg-soft">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand brand fw-bold" href="/admin" aria-label="Admin dashboard"><img class="brand-logo" src="/jacobrent-mark.svg" alt="Jacob Estate mark">Jacob Estate</a>
+            <a class="nav-link text-dark" href="/admin"><i class="bi bi-speedometer2 me-1"></i>Admin dashboard</a>
+        </div>
+    </nav>
+    <main class="container py-4">
+        <h1 class="h3 fw-bold mb-1">Audit log</h1>
+        <p class="text-muted">The 200 most recent administrative actions. Entries cannot be edited here.</p>
+        <% if (!entries.length) { %>
+            <div class="alert alert-info" role="status">No administrative actions have been recorded yet.</div>
+        <% } else { %>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle bg-white">
+                    <thead><tr><th scope="col">When</th><th scope="col">Admin</th><th scope="col">Action</th><th scope="col">Target</th><th scope="col">Details</th></tr></thead>
+                    <tbody>
+                        <% entries.forEach(entry => { %>
+                            <tr>
+                                <td class="text-nowrap"><%= new Date(entry.createdAt).toLocaleString('en-NG') %></td>
+                                <td><%= entry.actorEmail || 'Unknown' %></td>
+                                <td><code><%= entry.action %></code></td>
+                                <td><%= entry.targetType %> <small class="text-muted"><%= entry.targetId %></small></td>
+                                <td><%= entry.details %></td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        <% } %>
+    </main>
+    <%- include('partials/legal-footer') %>
+</body>
+</html>

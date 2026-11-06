@@ -12,6 +12,8 @@ const {
 } = require('../services/cloudinary-videos');
 
 const { featuredUntilFromDays } = require('../services/listing-promotion');
+const { recordAudit } = require('../services/audit-log');
+const AuditLog = require('../models/AuditLog');
 
 const router = express.Router();
 
@@ -109,6 +111,7 @@ router.post('/admin/properties/:id/verification', requireRole('admin'), async (r
         if (!exists) return res.status(404).send('Property not found.');
         return res.status(409).send('This property has an active payment and cannot be changed until checkout finishes.');
     }
+    await recordAudit(req, 'property.verification', { targetType: 'property', targetId: property._id, details: `status=${req.body.status}` });
     res.redirect('/admin');
 });
 
@@ -154,6 +157,7 @@ router.post('/admin/properties/:id/manage', requireRole('admin'), async (req, re
         if (!updatedProperty) {
             return res.status(409).send('This property has an active payment and cannot be changed until checkout finishes.');
         }
+        await recordAudit(req, 'property.manage', { targetType: 'property', targetId: property._id, details: `status=${req.body.status}; verification=${req.body.verificationStatus}` });
         return res.redirect('/admin?message=listing-updated');
     } catch (error) {
         return next(error);
@@ -175,6 +179,7 @@ router.post('/admin/properties/:id/feature', requireRole('admin'), async (req, r
             if (!exists) return res.status(404).send('Property not found.');
             return res.status(409).send('Only verified properties can be featured.');
         }
+        await recordAudit(req, 'property.feature', { targetType: 'property', targetId: req.params.id, details: featuredUntil ? `until=${featuredUntil.toISOString()}` : 'removed' });
         return res.redirect('/admin?message=listing-updated');
     } catch (error) {
         return next(error);
@@ -230,6 +235,16 @@ router.post('/admin/properties/:id/delete', requireRole('admin'), async (req, re
         .select('videoPublicId paymentReservationBookingId paymentReservationExpiresAt');
     if (!existingProperty) return res.status(404).send('Property not found.');
 
+    const now = new Date();
+    if (await Booking.exists({
+        propertyId: existingProperty._id,
+        paymentStatus: 'paid',
+        status: 'approved',
+        subscriptionExpiresAt: { $gt: now }
+    })) {
+        return res.status(409).send('This property has an active paid stay and cannot be deleted or archived until the stay ends.');
+    }
+
     const lock = await releaseStaleCheckoutLock(existingProperty);
     if (!lock.released) {
         const messages = {
@@ -238,6 +253,19 @@ router.post('/admin/properties/:id/delete', requireRole('admin'), async (req, re
             unverified: 'Paystack could not confirm that the earlier payment attempt ended, so the property was not deleted. Try again shortly.'
         };
         return res.status(409).send(messages[lock.reason]);
+    }
+
+    // Paid booking history is a financial record: archive the listing instead of deleting it.
+    if (await Booking.exists({
+        propertyId: existingProperty._id,
+        $or: [{ paymentStatus: 'paid' }, { 'paymentHistory.0': { $exists: true } }]
+    })) {
+        await Property.updateOne(
+            { _id: existingProperty._id },
+            { $set: { archivedAt: new Date(), status: 'maintenance', verificationStatus: 'rejected', featuredUntil: null } }
+        );
+        await recordAudit(req, 'property.archive', { targetType: 'property', targetId: existingProperty._id, details: 'kept because of payment history' });
+        return res.redirect('/admin?message=listing-archived');
     }
 
     const property = await Property.findOneAndDelete({
@@ -252,6 +280,7 @@ router.post('/admin/properties/:id/delete', requireRole('admin'), async (req, re
     await cleanupOrQueueVideos([property.videoPublicId]);
     await Booking.deleteMany({ propertyId: property._id });
     await PropertyInquiry.deleteMany({ propertyId: property._id });
+    await recordAudit(req, 'property.delete', { targetType: 'property', targetId: property._id, details: property.title });
     res.redirect('/admin');
 });
 
@@ -268,12 +297,29 @@ router.post('/admin/users/:id/delete', requireRole('admin'), async (req, res) =>
         || await Booking.exists({ studentId: targetUser._id, paymentStatus: 'pending' })) {
         return res.status(409).send('This account has an active payment and cannot be deleted until checkout finishes.');
     }
+    const financialRecord = await Booking.exists({
+        $or: [{ studentId: targetUser._id }, { propertyId: { $in: propertyIds } }],
+        $and: [{ $or: [{ paymentStatus: 'paid' }, { 'paymentHistory.0': { $exists: true } }] }]
+    });
+    if (financialRecord) {
+        return res.status(409).send('This account has payment records that must be kept, so it cannot be deleted. Remove its listings from public view instead.');
+    }
     await Booking.deleteMany({ $or: [{ studentId: targetUser._id }, { propertyId: { $in: propertyIds } }] });
     await PropertyInquiry.deleteMany({ $or: [{ buyerId: targetUser._id }, { propertyId: { $in: propertyIds } }] });
     await Property.deleteMany({ landlordId: targetUser._id });
     await cleanupOrQueueVideos(ownedProperties.map(property => property.videoPublicId));
     await User.findByIdAndDelete(targetUser._id);
+    await recordAudit(req, 'user.delete', { targetType: 'user', targetId: targetUser._id, details: `role=${targetUser.role}` });
     res.redirect('/admin');
+});
+
+router.get('/admin/audit-log', requireRole('admin'), async (req, res, next) => {
+    try {
+        const entries = await AuditLog.find().sort({ createdAt: -1 }).limit(200).lean();
+        res.render('audit-log', { user: req.user, entries });
+    } catch (error) {
+        next(error);
+    }
 });
 
 module.exports = router;

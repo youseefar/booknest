@@ -26,6 +26,8 @@ const { getPaymentMode } = require('./services/paystack');
 const { isGoogleConfigured } = require('./services/google-auth');
 const { isDatabaseError, isStorageLimitError } = require('./services/database-errors');
 const { isOpaqueSameOriginNavigation } = require('./services/request-origin');
+const { buildContentSecurityPolicy } = require('./config-security');
+const crossSiteGuard = require('./middleware/cross-site-guard');
 const { isCloudinaryConfigured, processVideoCleanupQueue } = require('./services/cloudinary-videos');
 app.locals.paystackMode = getPaymentMode();
 app.locals.googleAuthEnabled = isGoogleConfigured(process.env);
@@ -35,7 +37,8 @@ app.set('trust proxy', 1);
 const mongoUri = process.env.MONGODB_URI;
 
 // Middleware
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({ contentSecurityPolicy: buildContentSecurityPolicy({ production: process.env.NODE_ENV === 'production' }) }));
+app.use(crossSiteGuard);
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use(express.json({
   limit: '1mb',

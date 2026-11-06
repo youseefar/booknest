@@ -64,6 +64,10 @@ const propertySchema = new mongoose.Schema({
         enum: ['mp4', 'mov', 'webm', null],
         default: null
     },
+    archivedAt: {
+        type: Date,
+        default: null
+    },
     featuredUntil: {
         type: Date,
         default: null
