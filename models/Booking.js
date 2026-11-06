@@ -54,6 +54,15 @@ const bookingSchema = new mongoose.Schema({
         type: Date,
         default: null
     },
+    paymentIssue: {
+        type: String,
+        enum: ['paid_property_unavailable', null],
+        default: null
+    },
+    paymentIssueAt: {
+        type: Date,
+        default: null
+    },
     paymentHistory: [{
         reference: String,
         amountKobo: Number,
