@@ -1,7 +1,7 @@
 // Content Security Policy for Jacob Estate. Pages use only external scripts, so inline
 // script is not allowed. form-action is intentionally not set: browsers apply it to the
 // redirects after a form post, which would block the hand-off to Paystack and Google.
-function buildContentSecurityPolicy({ production = false } = {}) {
+function buildContentSecurityPolicy({ production = false, enforce = false } = {}) {
     const directives = {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", 'https://cdn.jsdelivr.net'],
@@ -18,7 +18,9 @@ function buildContentSecurityPolicy({ production = false } = {}) {
         frameAncestors: ["'self'"]
     };
     if (production) directives.upgradeInsecureRequests = [];
-    return { useDefaults: false, directives };
+    // Report-only until CSP_ENFORCE=true, so the owner can confirm in a real browser console
+    // that nothing is blocked before the policy is enforced.
+    return { useDefaults: false, reportOnly: !enforce, directives };
 }
 
 module.exports = { buildContentSecurityPolicy };

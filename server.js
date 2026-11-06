@@ -37,7 +37,7 @@ app.set('trust proxy', 1);
 const mongoUri = process.env.MONGODB_URI;
 
 // Middleware
-app.use(helmet({ contentSecurityPolicy: buildContentSecurityPolicy({ production: process.env.NODE_ENV === 'production' }) }));
+app.use(helmet({ contentSecurityPolicy: buildContentSecurityPolicy({ production: process.env.NODE_ENV === 'production', enforce: process.env.CSP_ENFORCE === 'true' }) }));
 app.use(crossSiteGuard);
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use(express.json({

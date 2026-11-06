@@ -122,7 +122,8 @@ const PAGES = [
             {
                 heading: 'Failed, duplicate or unrecognised charges',
                 paragraphs: [
-                    'If you were charged but your booking did not complete, or you were charged twice, contact us with your payment reference and the time of the payment. We can check our records, and Paystack can investigate the transaction itself.'
+                    'If you were charged but your booking did not complete, or you were charged twice, contact us with your payment reference and the time of the payment. We can check our records, and Paystack can investigate the transaction itself.',
+                    'If a payment is confirmed by Paystack but the home can no longer be secured for you (for example, someone else\'s payment was confirmed first), your booking is not marked as paid. We flag it for review so a refund or another solution can be arranged. Keep your payment reference and contact us.'
                 ]
             },
             {
