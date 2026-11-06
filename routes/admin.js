@@ -87,6 +87,13 @@ router.get('/admin', requireRole('admin'), async (req, res, next) => {
 router.post('/admin/properties/:id/verification', requireRole('admin'), async (req, res) => {
     const allowed = ['pending', 'verified', 'rejected'];
     if (!allowed.includes(req.body.status)) return res.status(400).send('Invalid verification status.');
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
+    if (req.body.status === 'verified') {
+        const current = await Property.findById(req.params.id).select('videoUrl verificationStatus');
+        if (current && current.verificationStatus !== 'verified' && !current.videoUrl) {
+            return res.status(409).send('A property needs a video tour before it can be verified.');
+        }
+    }
     const property = await Property.findOneAndUpdate(
         {
             _id: req.params.id,
@@ -115,6 +122,9 @@ router.post('/admin/properties/:id/manage', requireRole('admin'), async (req, re
     try {
         const property = await Property.findById(req.params.id);
         if (!property) return res.status(404).send('Property not found.');
+        if (req.body.verificationStatus === 'verified' && property.verificationStatus !== 'verified' && !property.videoUrl) {
+            return res.status(409).send('A property needs a video tour before it can be verified.');
+        }
         if ((property.listingType === 'sale' && req.body.status === 'rented')
             || (property.listingType === 'rent' && req.body.status === 'sold')) {
             return res.status(400).send('Choose a status that matches this listing type.');

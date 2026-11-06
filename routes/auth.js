@@ -329,7 +329,7 @@ router.get('/dashboard', (req, res, next) => {
   return Booking.syncExpiredSubscriptions()
     .then(() => Promise.all([
       Booking.find({ studentId: req.user._id })
-        .populate('propertyId', 'title location price images videoUrl videoFormat status listingType')
+        .populate('propertyId', 'title location price videoUrl videoFormat status listingType')
         .sort({ timestamp: -1 }),
       PropertyInquiry.find({ buyerId: req.user._id })
         .populate('propertyId', 'title location price status listingType')

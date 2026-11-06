@@ -7,9 +7,11 @@ the browser. If these values are not configured, property listings without a
 video continue to work and video-management actions are unavailable.
 
 Uploads accept MP4, MOV, and WebM files up to 50 MB. New and replacement
-uploads are validated before they are stored. Existing property documents and
-their image URLs are preserved; the application does not provide image
-uploads.
+uploads are validated before they are stored. Property listings are video-only: new
+listings require a video tour, and the application does not provide property
+image uploads or display property photos. Older property records are never
+deleted; legacy image URLs stay untouched in MongoDB but are no longer read
+or shown. A property cannot be verified until it has a video.
 
 Cloudinary assets no longer referenced by a property are processed through
 the `CloudinaryVideoCleanup` MongoDB collection. The cleanup worker starts

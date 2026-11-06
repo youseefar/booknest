@@ -93,10 +93,7 @@
                                             <video class="property-card-video" data-lazy-video data-video-preview preload="none" muted loop playsinline aria-hidden="true">
                                                 <source src="<%= property.videoUrl %>" type="video/<%= property.videoFormat || 'mp4' %>">
                                             </video>
-                                            <% if (property.images && property.images.length) { %><img src="<%= property.images[0] %>" alt="" class="property-video-poster" loading="lazy"><% } %>
                                             <span class="property-video-label"><i class="bi bi-play-circle-fill me-1"></i>Video tour</span>
-                                        <% } else if (property.images && property.images.length) { %>
-                                            <img src="<%= property.images[0] %>" alt="<%= property.title %>">
                                         <% } else { %>
                                             <div class="airbnb-placeholder">
                                                 <i class="bi bi-house-heart"></i>

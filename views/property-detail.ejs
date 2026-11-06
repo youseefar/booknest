@@ -41,25 +41,7 @@
                             Your browser does not support video playback.
                         </video>
                     <% } %>
-                    <% if (property.images && property.images.length) { %>
-                        <div id="propertyCarousel" class="carousel slide" data-bs-ride="carousel">
-                            <div class="carousel-inner">
-                                <% property.images.forEach((image, index) => { %>
-                                    <div class="carousel-item <%= index === 0 ? 'active' : '' %>">
-                                        <img src="<%= image %>" class="d-block w-100" alt="<%= property.title %>" style="height: 520px; object-fit: cover;">
-                                    </div>
-                                <% }); %>
-                            </div>
-                            <button class="carousel-control-prev" type="button" data-bs-target="#propertyCarousel" data-bs-slide="prev">
-                                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                                <span class="visually-hidden">Previous</span>
-                            </button>
-                            <button class="carousel-control-next" type="button" data-bs-target="#propertyCarousel" data-bs-slide="next">
-                                <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                                <span class="visually-hidden">Next</span>
-                            </button>
-                        </div>
-                    <% } else if (!property.videoUrl) { %>
+                    <% if (!property.videoUrl) { %>
                         <div class="d-flex align-items-center justify-content-center bg-gradient-rent text-white" style="height: 520px;">
                             <i class="bi bi-house-heart display-1"></i>
                         </div>

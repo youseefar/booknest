@@ -32,7 +32,7 @@ The admin dashboard reads the platform's available NGN balance from Paystack. Th
 
 ## Low-storage media policy
 
-The app does not accept property video or image uploads, avoiding media-hosting charges and large uploads. Existing static assets and listing image URLs remain supported. Property listing fields have size limits, and each listing accepts at most 20 short amenity labels. Older video links may remain in MongoDB for compatibility but are no longer requested by the app.
+Property listings use Cloudinary-hosted video tours only (see `MEDIA.md`); the app does not accept or display property image uploads. Existing static assets such as logos and icons remain supported. Property listing fields have size limits, and each listing accepts at most 20 short amenity labels.
 
 Property discovery uses a weighted MongoDB text index on listing titles, areas, and addresses, and serves 12 results per page. Bedroom and bathroom counts are optional owner-provided details; existing listings remain valid and never display guessed counts.
 
@@ -44,6 +44,6 @@ Property discovery uses a weighted MongoDB text index on listing titles, areas, 
 
 Do not test live payments with real student accounts. Confirm a small controlled live transaction and the settlement split in the Paystack dashboard before opening checkout to students.
 
-The student dashboard and **My Bookings** page show each paid home, its photo, and its expiry date. A booking expires one calendar month after the verified payment date, clamping to the last day of shorter months. Students can cancel an active booking; cancellation does not issue an automatic refund. If no other active stay exists, the home is released. Expired or cancelled stays can be rebooked when the home is available, starting a fresh monthly period after the next successful payment.
+The student dashboard and **My Bookings** page show each paid home, its video preview, and its expiry date. A booking expires one calendar month after the verified payment date, clamping to the last day of shorter months. Students can cancel an active booking; cancellation does not issue an automatic refund. If no other active stay exists, the home is released. Expired or cancelled stays can be rebooked when the home is available, starting a fresh monthly period after the next successful payment.
 
 Expired stays are synchronized when students load the dashboard, browse properties, or open a property, so a home becomes available again as its monthly period ends.

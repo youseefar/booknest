@@ -267,12 +267,13 @@ router.post('/add-property', requireRole('landlord'), parseVideoUpload, handleVi
             || !['rent', 'sale'].includes(listingType) || !Number.isFinite(numericPrice) || numericPrice <= 0) {
             return res.status(400).render('add-property', { user: req.user, message: 'Please complete every field with valid information.' });
         }
-        if (req.file) {
-            if (!isCloudinaryConfigured()) {
-                return res.status(503).send('Video uploads are temporarily unavailable.');
-            }
-            uploadedVideo = await uploadPropertyVideo(req.file);
+        if (!req.file) {
+            return res.status(400).render('add-property', { user: req.user, message: 'Upload a property video to list your home. Listings use video tours only.' });
         }
+        if (!isCloudinaryConfigured()) {
+            return res.status(503).send('Video uploads are temporarily unavailable.');
+        }
+        uploadedVideo = await uploadPropertyVideo(req.file);
 
         const newProperty = new Property({
             title: cleanTitle,

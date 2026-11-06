@@ -51,9 +51,6 @@ const propertySchema = new mongoose.Schema({
         type: [{ type: String, trim: true, maxlength: 80 }],
         validate: [amenities => amenities.length <= 20, 'A property can have at most 20 amenities.']
     },
-    images: [{
-        type: String
-    }],
     videoUrl: {
         type: String,
         default: null
