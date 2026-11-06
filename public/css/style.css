@@ -3404,3 +3404,13 @@ html[data-theme="dark"] .site-nav-toggle {
     aspect-ratio: 16 / 9;
     text-align: center;
 }
+
+/* Legal and trust pages */
+.site-legal-footer nav { flex-wrap: wrap; gap: 0.5rem 1rem; }
+.legal-list { padding-left: 1.25rem; margin-bottom: 0; }
+.legal-list li { margin-bottom: 0.4rem; line-height: 1.6; }
+.faq-item { border-bottom: 1px solid rgba(0, 0, 0, 0.1); padding: 0.85rem 0; }
+.faq-item summary { cursor: pointer; font-weight: 600; }
+.faq-item p { margin: 0.6rem 0 0; }
+html[data-theme="dark"] .legal-list li { color: inherit; }
+html[data-theme="dark"] .faq-item { border-color: rgba(255, 255, 255, 0.15); }
