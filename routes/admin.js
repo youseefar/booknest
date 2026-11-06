@@ -181,9 +181,64 @@ router.post('/admin/properties/:id/feature', requireRole('admin'), async (req, r
     }
 });
 
+const ABANDONED_TRANSACTION_STATUSES = new Set(['failed', 'abandoned', 'reversed']);
+
+// Frees a checkout lock that has expired, but only after Paystack confirms the payment was
+// never completed. Returns { released: true } or { released: false, reason }.
+async function releaseStaleCheckoutLock(property) {
+    const bookingId = property.paymentReservationBookingId;
+    if (!bookingId) return { released: true };
+    if (!property.paymentReservationExpiresAt || property.paymentReservationExpiresAt > new Date()) {
+        return { released: false, reason: 'active' };
+    }
+
+    const booking = await Booking.findById(bookingId).select('paymentStatus paymentReference');
+    if (booking?.paymentStatus === 'paid') return { released: false, reason: 'paid' };
+
+    if (booking?.paymentStatus === 'pending' && booking.paymentReference) {
+        const secretKey = getPaystackSecretKey();
+        if (!secretKey) return { released: false, reason: 'unverified' };
+        try {
+            const transaction = await paystackRequest(
+                `/transaction/verify/${encodeURIComponent(booking.paymentReference)}`,
+                secretKey,
+                { method: 'GET' }
+            );
+            if (!ABANDONED_TRANSACTION_STATUSES.has(transaction?.status)) {
+                return { released: false, reason: transaction?.status === 'success' ? 'paid' : 'unverified' };
+            }
+        } catch (error) {
+            // A reference Paystack has never seen cannot have been paid.
+            if (!/not found/i.test(String(error?.message || ''))) return { released: false, reason: 'unverified' };
+        }
+        await Booking.updateOne(
+            { _id: booking._id, paymentStatus: 'pending' },
+            { $set: { paymentStatus: 'failed', paymentAuthorizationUrl: null } }
+        );
+    }
+
+    await Property.updateOne(
+        { _id: property._id, paymentReservationBookingId: bookingId },
+        { $unset: { paymentReservationBookingId: 1, paymentReservationExpiresAt: 1 } }
+    );
+    return { released: true };
+}
+
 router.post('/admin/properties/:id/delete', requireRole('admin'), async (req, res) => {
-    const existingProperty = await Property.findById(req.params.id).select('videoPublicId');
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
+    const existingProperty = await Property.findById(req.params.id)
+        .select('videoPublicId paymentReservationBookingId paymentReservationExpiresAt');
     if (!existingProperty) return res.status(404).send('Property not found.');
+
+    const lock = await releaseStaleCheckoutLock(existingProperty);
+    if (!lock.released) {
+        const messages = {
+            active: 'A payment is in progress on this property. The checkout lock lasts 30 minutes; try again after it expires.',
+            paid: 'This property has a completed payment and cannot be deleted. Mark it rented or unavailable instead.',
+            unverified: 'Paystack could not confirm that the earlier payment attempt ended, so the property was not deleted. Try again shortly.'
+        };
+        return res.status(409).send(messages[lock.reason]);
+    }
 
     const property = await Property.findOneAndDelete({
         _id: req.params.id,
