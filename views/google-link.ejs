@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Google - Jacob Estate</title>
+    <link rel="icon" type="image/svg+xml" href="/jacobrent-mark.svg">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="/js/theme.js"></script>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body class="bg-soft auth-page-body auth-page-with-nav">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand brand fw-bold" href="/" aria-label="Jacob Estate home"><img class="brand-logo" src="/jacobrent-mark.svg" alt="Jacob Estate mark">Jacob Estate</a>
+            <div class="d-flex gap-3 align-items-center">
+                <a class="nav-link text-dark" href="/"><i class="bi bi-house-door me-1"></i>Home</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container auth-form-layout d-flex justify-content-center align-items-center">
+        <div class="auth-card">
+            <div class="text-center mb-4">
+                <span class="eyebrow text-uppercase">Confirm it&rsquo;s you</span>
+                <h1 class="fw-bold mb-2">Link your Google account</h1>
+                <p class="text-muted mb-0">An account already exists for <strong><%= email %></strong>. Enter its password once to connect Google sign-in.</p>
+            </div>
+
+            <% if (typeof message !== 'undefined' && message) { %>
+                <div class="alert alert-danger"><%= message %></div>
+            <% } %>
+
+            <form method="POST" action="/auth/google/link" class="row g-3">
+                <div class="col-12">
+                    <label class="form-label" for="password">Account password</label>
+                    <input id="password" type="password" name="password" class="form-control" placeholder="Your Jacob Estate password" autocomplete="current-password" required>
+                </div>
+                <div class="col-12 pt-2">
+                    <button type="submit" class="btn btn-primary w-100">Link Google and sign in</button>
+                </div>
+            </form>
+
+            <p class="text-center small text-muted mt-4 mb-0"><a href="/forgot-password" class="text-link">Forgot your password?</a> &middot; <a href="/login" class="text-link">Cancel</a></p>
+        </div>
+    </div>
+    <%- include('partials/legal-footer') %>
+</body>
+
+</html>

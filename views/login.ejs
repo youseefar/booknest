@@ -48,6 +48,10 @@
                     <button type="submit" class="btn btn-primary w-100">Login</button>
                 </div>
             </form>
+            <% if (typeof googleAuthEnabled !== 'undefined' && googleAuthEnabled) { %>
+                <p class="text-center text-muted small my-3">or</p>
+                <a class="btn btn-outline-secondary w-100" href="/auth/google?intent=login<%= returnTo ? '&returnTo=' + encodeURIComponent(returnTo) : '' %>"><i class="bi bi-google me-2" aria-hidden="true"></i>Continue with Google</a>
+            <% } %>
 
             <p class="text-end small mt-3 mb-0"><a href="/forgot-password" class="text-link">Forgot your password?</a></p>
             <p class="text-center small text-muted mt-4 mb-0">Don't have an account? <a href="/register<%= returnTo ? '?returnTo=' + encodeURIComponent(returnTo) : '' %>" class="text-link">Register here</a></p>

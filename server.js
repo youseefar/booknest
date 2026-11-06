@@ -9,6 +9,7 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 require('dotenv').config();
 const authRoutes = require('./routes/auth');
+const googleAuthRoutes = require('./routes/google-auth');
 const propertyRoutes = require('./routes/property');
 const bookingRoutes = require('./routes/booking');
 const adminRoutes = require('./routes/admin');
@@ -22,10 +23,12 @@ const { normalizeEmail } = require('./services/auth-validation');
 
 const app = express();
 const { getPaymentMode } = require('./services/paystack');
+const { isGoogleConfigured } = require('./services/google-auth');
 const { isDatabaseError, isStorageLimitError } = require('./services/database-errors');
 const { isOpaqueSameOriginNavigation } = require('./services/request-origin');
 const { isCloudinaryConfigured, processVideoCleanupQueue } = require('./services/cloudinary-videos');
 app.locals.paystackMode = getPaymentMode();
+app.locals.googleAuthEnabled = isGoogleConfigured(process.env);
 mongoose.set('bufferCommands', false);
 app.set('trust proxy', 1);
 
@@ -64,6 +67,7 @@ const requestLimiter = rateLimit({
 });
 app.use(requestLimiter);
 app.use('/login', rateLimit({ ...limiterOptions, limit: 10 }));
+app.use('/auth/google', rateLimit({ ...limiterOptions, limit: 30 }));
 app.use('/register', rateLimit({ ...limiterOptions, limit: 5, windowMs: 60 * 60 * 1000 }));
 app.use('/forgot-password', rateLimit({ ...limiterOptions, limit: 5, windowMs: 60 * 60 * 1000 }));
 app.use('/reset-password', rateLimit({ ...limiterOptions, limit: 10 }));
@@ -222,6 +226,7 @@ app.use((req, res, next) => {
   return passportSession(req, res, next);
 });
 app.use('/', authRoutes);
+app.use('/', googleAuthRoutes);
 app.use('/', propertyRoutes);
 app.use('/', bookingRoutes);
 app.use('/', adminRoutes);

@@ -57,6 +57,10 @@
                     <button type="submit" class="btn btn-primary w-100">Create account</button>
                 </div>
             </form>
+            <% if (typeof googleAuthEnabled !== 'undefined' && googleAuthEnabled) { %>
+                <p class="text-center text-muted small my-3">or</p>
+                <a class="btn btn-outline-secondary w-100" href="/auth/google?intent=register&amp;role=student<%= typeof returnTo !== 'undefined' && returnTo ? '&returnTo=' + encodeURIComponent(returnTo) : '' %>"><i class="bi bi-google me-2" aria-hidden="true"></i>Sign up with Google</a>
+            <% } %>
 
             <p class="text-center small text-muted mt-4 mb-0">Already registered? <a href="/login" class="text-link">Login here</a></p>
         </div>

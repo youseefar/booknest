@@ -35,6 +35,12 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    googleId: {
+        type: String,
+        default: undefined,
+        trim: true,
+        maxlength: 64
+    },
     passwordResetToken: {
         type: String,
         select: false,
@@ -86,5 +92,6 @@ userSchema.pre('save', async function () {
 
 userSchema.index({ role: 1, createdAt: -1 });
 userSchema.index({ passwordResetToken: 1 }, { unique: true, sparse: true });
+userSchema.index({ googleId: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('User', userSchema);
