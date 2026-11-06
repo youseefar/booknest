@@ -38,11 +38,11 @@
                 <% if (returnTo) { %><input type="hidden" name="returnTo" value="<%= returnTo %>"><% } %>
                 <div class="col-12">
                     <label class="form-label" for="email">Email address</label>
-                    <input id="email" type="email" name="email" class="form-control" placeholder="you@example.com" required>
+                    <input id="email" type="email" name="email" class="form-control" placeholder="you@example.com" autocomplete="email" required>
                 </div>
                 <div class="col-12">
                     <label class="form-label" for="password">Password</label>
-                    <input id="password" type="password" name="password" class="form-control" placeholder="Your password" required>
+                    <input id="password" type="password" name="password" class="form-control" placeholder="Your password" autocomplete="current-password" required>
                 </div>
                 <div class="col-12 pt-2">
                     <button type="submit" class="btn btn-primary w-100">Login</button>

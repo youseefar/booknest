@@ -37,15 +37,15 @@
                 <% if (typeof returnTo !== 'undefined' && returnTo) { %><input type="hidden" name="returnTo" value="<%= returnTo %>"><% } %>
                 <div class="col-12">
                     <label class="form-label" for="name">Full name</label>
-                    <input id="name" type="text" name="name" class="form-control" placeholder="Your full name" required>
+                    <input id="name" type="text" name="name" class="form-control" placeholder="Your full name" autocomplete="name" required>
                 </div>
                 <div class="col-12">
                     <label class="form-label" for="email">Email address</label>
-                    <input id="email" type="email" name="email" class="form-control" placeholder="you@example.com" required>
+                    <input id="email" type="email" name="email" class="form-control" placeholder="you@example.com" autocomplete="email" required>
                 </div>
                 <div class="col-12">
                     <label class="form-label" for="phone">Phone number</label>
-                    <input id="phone" type="tel" name="phone" class="form-control" placeholder="e.g. 0801 234 5678" minlength="7" required>
+                    <input id="phone" type="tel" name="phone" class="form-control" placeholder="e.g. 0801 234 5678" minlength="7" autocomplete="tel" required>
                     <div class="form-text">Home seekers can use this number to contact you about listings.</div>
                 </div>
                 <div class="col-12">
@@ -53,11 +53,11 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="password">Password</label>
-                    <input id="password" type="password" name="password" class="form-control" placeholder="8+ characters with a number" minlength="8" data-password-strength required>
+                    <input id="password" type="password" name="password" class="form-control" placeholder="8+ characters with a number" minlength="8" autocomplete="new-password" data-password-strength required>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label" for="confirmPassword">Confirm password</label>
-                    <input id="confirmPassword" type="password" name="confirmPassword" class="form-control" placeholder="Repeat password" data-password-confirm="password" required>
+                    <input id="confirmPassword" type="password" name="confirmPassword" class="form-control" placeholder="Repeat password" data-password-confirm="password" autocomplete="new-password" required>
                 </div>
                 <div class="col-12 pt-2">
                     <button type="submit" class="btn btn-primary w-100">Create property owner account</button>

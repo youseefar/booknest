@@ -3391,3 +3391,16 @@ html[data-theme="dark"] .site-nav-toggle {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* Listings without a video tour */
+.property-detail-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    max-height: 540px;
+    aspect-ratio: 16 / 9;
+    text-align: center;
+}
