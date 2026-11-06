@@ -94,10 +94,10 @@
                 <% properties.forEach(property => { %>
                     <div class="airbnb-list-row">
                         <a class="airbnb-row-link" href="/property/<%= property._id %>">
-                            <span class="dashboard-list-thumb"><% if (property.videoUrl) { %><video data-lazy-video data-video-preview preload="none" muted loop playsinline aria-hidden="true"><source src="<%= property.videoUrl %>" type="video/<%= property.videoFormat || 'mp4' %>"></video>" alt="" loading="lazy"><% } else { %><i class="bi bi-house"></i><% } %></span>
+                            <span class="dashboard-list-thumb"><% if (property.videoUrl) { %><video data-lazy-video data-video-preview preload="none" muted loop playsinline aria-hidden="true"><source src="<%= property.videoUrl %>" type="video/<%= property.videoFormat || 'mp4' %>"></video><% } else { %><i class="bi bi-house"></i><% } %></span>
                             <span>
                                 <strong><%= property.title %></strong>
-                                <small><%= property.location %> · ₦<%= property.price.toLocaleString() %><%= property.listingType === 'rent' ? '/month · For rent' : ' · For sale' %></small>
+                                <small><%= property.location %> · ₦<%= property.price.toLocaleString() %><%= property.listingType === 'rent' ? '/month · For rent' : ' · For sale' %> · <%= (property.viewCount || 0).toLocaleString() %> view<%= property.viewCount === 1 ? '' : 's' %><% if (property.featuredUntil && new Date(property.featuredUntil) > new Date()) { %> · Featured<% } %></small>
                             </span>
                         </a>
                         <span class="dashboard-property-status">

@@ -64,6 +64,15 @@ const propertySchema = new mongoose.Schema({
         enum: ['mp4', 'mov', 'webm', null],
         default: null
     },
+    featuredUntil: {
+        type: Date,
+        default: null
+    },
+    viewCount: {
+        type: Number,
+        min: 0,
+        default: 0
+    },
     paymentReservationBookingId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Booking',

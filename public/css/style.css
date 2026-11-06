@@ -3414,3 +3414,5 @@ html[data-theme="dark"] .site-nav-toggle {
 .faq-item p { margin: 0.6rem 0 0; }
 html[data-theme="dark"] .legal-list li { color: inherit; }
 html[data-theme="dark"] .faq-item { border-color: rgba(255, 255, 255, 0.15); }
+
+.featured-badge { font-weight: 600; }

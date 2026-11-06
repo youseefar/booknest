@@ -244,7 +244,7 @@
                 <div class="airbnb-list-row admin-listing-row">
                     <a class="airbnb-row-link" href="/property/<%= property._id %>">
                         <span class="dashboard-list-thumb">
-                            <% if (property.videoUrl) { %><video data-lazy-video data-video-preview preload="none" muted loop playsinline aria-hidden="true"><source src="<%= property.videoUrl %>" type="video/<%= property.videoFormat || 'mp4' %>"></video>" alt="<%= property.title %>" loading="lazy"><% } else { %><i class="bi bi-house"></i><% } %>
+                            <% if (property.videoUrl) { %><video data-lazy-video data-video-preview preload="none" muted loop playsinline aria-hidden="true"><source src="<%= property.videoUrl %>" type="video/<%= property.videoFormat || 'mp4' %>"></video><% } else { %><i class="bi bi-house"></i><% } %>
                         </span>
                         <span class="admin-listing-copy">
                             <strong><%= property.title %></strong>
@@ -269,6 +269,18 @@
                             <option value="rejected" <%= property.verificationStatus === 'rejected' ? 'selected' : '' %>>Rejected</option>
                         </select>
                         <button class="btn btn-outline-primary btn-sm" type="submit">Save</button>
+                    </form>
+                    <% const featuredActive = property.featuredUntil && new Date(property.featuredUntil) > new Date(); %>
+                    <form class="admin-listing-manage" method="POST" action="/admin/properties/<%= property._id %>/feature">
+                        <label class="visually-hidden" for="feature-<%= property._id %>">Featured placement for <%= property.title %></label>
+                        <select id="feature-<%= property._id %>" class="form-select form-select-sm" name="days">
+                            <option value="" selected><%= featuredActive ? 'Featured until ' + new Date(property.featuredUntil).toLocaleDateString('en-NG') : 'Not featured' %></option>
+                            <option value="7">Feature for 7 days</option>
+                            <option value="30">Feature for 30 days</option>
+                            <option value="90">Feature for 90 days</option>
+                            <option value="0">Remove featured</option>
+                        </select>
+                        <button class="btn btn-outline-secondary btn-sm" type="submit">Set</button>
                     </form>
                     <form method="POST" action="/admin/properties/<%= property._id %>/delete" data-confirm-title="Delete this property?" data-confirm-message="This permanently removes the listing, booking history, and sale inquiries." data-confirm-action="Delete property" data-confirm-variant="danger">
                         <button class="btn btn-outline-danger btn-sm" type="submit" aria-label="Delete <%= property.title %>"><i class="bi bi-trash3"></i></button>

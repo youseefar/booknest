@@ -176,6 +176,10 @@ router.get('/property/:id', async (req, res, next) => {
             || req.user?.role === 'admin'
             || property.landlordId?._id.equals(req.user?._id);
         if (!canView) return res.status(404).send('Property not found');
+        const isOwnerOrAdmin = req.user?.role === 'admin' || property.landlordId?._id.equals(req.user?._id);
+        if (!isOwnerOrAdmin) {
+            Property.updateOne({ _id: property._id }, { $inc: { viewCount: 1 } }).catch(() => {});
+        }
         const reviewEligible = property.listingType === 'rent' && req.user?.role === 'student' && Boolean(await Booking.exists({
             studentId: req.user._id,
             propertyId: property._id,

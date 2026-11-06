@@ -90,6 +90,7 @@
                                 </div>
                                 <span class="property-video-label"><i class="bi bi-camera-video-off me-1" aria-hidden="true"></i>Video tour coming soon</span>
                             <% } %>
+                            <% if (property.featuredUntil && new Date(property.featuredUntil) > new Date() && property.verificationStatus === 'verified') { %><span class="badge position-absolute top-0 start-0 m-3 text-bg-warning featured-badge"><i class="bi bi-star-fill me-1" aria-hidden="true"></i>Featured</span><% } %>
                             <span class="badge position-absolute top-0 end-0 m-3 text-bg-light text-success"><%= property.status === 'sold' ? 'sold' : property.verificationStatus %></span>
                             <button type="button" class="wish-btn" data-property-id="<%= property._id %>" data-property-title="<%= property.title %>" aria-label="Save <%= property.title %> to wishlist" aria-pressed="false">
                                 <i class="bi bi-heart" aria-hidden="true"></i>

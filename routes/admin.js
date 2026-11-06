@@ -11,6 +11,8 @@ const {
     cleanupOrQueueVideos
 } = require('../services/cloudinary-videos');
 
+const { featuredUntilFromDays } = require('../services/listing-promotion');
+
 const router = express.Router();
 
 router.get('/admin', requireRole('admin'), async (req, res, next) => {
@@ -151,6 +153,27 @@ router.post('/admin/properties/:id/manage', requireRole('admin'), async (req, re
         );
         if (!updatedProperty) {
             return res.status(409).send('This property has an active payment and cannot be changed until checkout finishes.');
+        }
+        return res.redirect('/admin?message=listing-updated');
+    } catch (error) {
+        return next(error);
+    }
+});
+
+router.post('/admin/properties/:id/feature', requireRole('admin'), async (req, res, next) => {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
+    const featuredUntil = featuredUntilFromDays(req.body.days);
+    if (featuredUntil === undefined) return res.redirect('/admin');
+
+    try {
+        const filter = featuredUntil
+            ? { _id: req.params.id, verificationStatus: 'verified' }
+            : { _id: req.params.id };
+        const property = await Property.findOneAndUpdate(filter, { $set: { featuredUntil } });
+        if (!property) {
+            const exists = await Property.exists({ _id: req.params.id });
+            if (!exists) return res.status(404).send('Property not found.');
+            return res.status(409).send('Only verified properties can be featured.');
         }
         return res.redirect('/admin?message=listing-updated');
     } catch (error) {
