@@ -13,9 +13,11 @@ router.get('/privacy-policy', (req, res) => {
 
 const SUPPORT_EMAIL_PATTERN = /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/;
 
+const DEFAULT_SUPPORT_EMAIL = 'Jacobintegratedservices@gmail.com';
+
 function getSupportEmail() {
     const value = String(process.env.SUPPORT_EMAIL || '').trim();
-    return SUPPORT_EMAIL_PATTERN.test(value) ? value : '';
+    return SUPPORT_EMAIL_PATTERN.test(value) ? value : DEFAULT_SUPPORT_EMAIL;
 }
 
 PAGES.forEach(page => {
