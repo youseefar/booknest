@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const express = require('express');
 const Booking = require('../models/Booking');
 const Property = require('../models/Property');
@@ -50,8 +51,12 @@ router.post('/bookings/:id/status', requireRole('landlord'), async (req, res) =>
     const allowed = ['pending', 'viewed', 'approved', 'rejected'];
     if (!allowed.includes(req.body.status)) return res.status(400).send('Invalid booking status.');
 
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Booking not found.');
     const booking = await Booking.findById(req.params.id).populate('propertyId', 'landlordId');
-    if (!booking || String(booking.propertyId.landlordId) !== String(req.user._id)) return res.status(404).send('Booking not found.');
+    if (!booking || !booking.propertyId || String(booking.propertyId.landlordId) !== String(req.user._id)) return res.status(404).send('Booking not found.');
+    if (booking.paymentStatus === 'paid' || ['awaiting_payment', 'cancelled', 'expired'].includes(booking.status)) {
+        return res.status(409).send('This booking is tied to a payment and its status cannot be changed here.');
+    }
     booking.status = req.body.status;
     booking.landlordViewed = true;
     await booking.save();

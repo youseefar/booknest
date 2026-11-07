@@ -15,6 +15,8 @@ const {
     verifyWebhookSignature
 } = require('../services/paystack');
 
+const { recordVerifiedPayment } = require('../services/payment-recording');
+const { recordAudit } = require('../services/audit-log');
 const router = express.Router();
 
 function normalizeAccountName(value) {
@@ -165,6 +167,7 @@ router.post('/payments/admin-payout-account', requireRole('admin'), async (req, 
         req.user.payoutAccountName = account.account_name;
         req.user.payoutAccountLast4 = accountNumber.slice(-4);
         await req.user.save();
+        await recordAudit(req, 'admin.payout_account_saved', { targetType: 'user', targetId: req.user._id, details: `last4=${accountNumber.slice(-4)}` });
         return res.redirect('/admin?payout=account-saved');
     } catch (error) {
         if (isDatabaseError(error)) return next(error);
@@ -203,9 +206,11 @@ router.post('/payments/admin/withdraw', requireRole('admin'), async (req, res) =
         });
         if (transfer?.status === 'otp' && transfer.transfer_code) {
             req.session.pendingAdminTransfer = { transferCode: transfer.transfer_code, amountKobo, reference };
+            await recordAudit(req, 'admin.withdraw_requested', { targetType: 'transfer', targetId: reference, details: `amountKobo=${amountKobo}` });
             return res.redirect('/admin?payout=otp');
         }
         req.session.pendingAdminTransfer = null;
+        await recordAudit(req, 'admin.withdraw_sent', { targetType: 'transfer', targetId: reference, details: `amountKobo=${amountKobo}` });
         return res.redirect('/admin?payout=sent');
     } catch (error) {
         console.error('Admin balance withdrawal failed:', error.name);
@@ -227,6 +232,7 @@ router.post('/payments/admin/withdraw/finalize', requireRole('admin'), async (re
             method: 'POST',
             body: JSON.stringify({ transfer_code: pendingTransfer.transferCode, otp })
         });
+        await recordAudit(req, 'admin.withdraw_finalized', { targetType: 'transfer', targetId: pendingTransfer.reference || '', details: `amountKobo=${pendingTransfer.amountKobo || ''}` });
         req.session.pendingAdminTransfer = null;
         return res.redirect('/admin?payout=complete');
     } catch (error) {
@@ -245,131 +251,6 @@ const terminalPaymentStatuses = new Set(['failed', 'abandoned', 'reversed']);
 
 async function fetchVerifiedTransaction(reference, secretKey) {
     return paystackRequest(`/transaction/verify/${encodeURIComponent(reference)}`, secretKey, { method: 'GET' });
-}
-
-async function recordVerifiedPayment(booking, reference, transaction) {
-    if (!isVerifiedPaystackTransaction(booking, reference, transaction)) return false;
-
-    if (booking.paymentStatus === 'paid' && booking.paymentReference === reference) {
-        const completedProperty = await Property.findOne({
-            _id: booking.propertyId?._id || booking.propertyId,
-            status: 'rented'
-        }).select('_id');
-        if (completedProperty) return true;
-    } else {
-        const reservation = await Property.exists({
-            _id: booking.propertyId?._id || booking.propertyId,
-            status: 'available',
-            paymentReservationBookingId: booking._id
-        });
-        if (!reservation) return false;
-
-        const paymentPaidAt = new Date();
-        const update = await Booking.updateOne(
-            {
-                _id: booking._id,
-                paymentReference: reference,
-                paymentAmountKobo: transaction.amount,
-                paymentStatus: 'pending'
-            },
-            {
-                $set: {
-                    status: 'approved',
-                    paymentStatus: 'paid',
-                    paymentPaidAt,
-                    subscriptionExpiresAt: Booking.addOneCalendarMonth(paymentPaidAt),
-                    paymentAuthorizationUrl: null
-                }
-            }
-        );
-        if (!update.modifiedCount) {
-            const currentBooking = await Booking.findById(booking._id).select('paymentStatus paymentReference');
-            if (currentBooking?.paymentStatus !== 'paid' || currentBooking.paymentReference !== reference) return false;
-        }
-    }
-
-    const propertyFilter = {
-        _id: booking.propertyId?._id || booking.propertyId,
-        status: 'available',
-        paymentReservationBookingId: booking._id
-    };
-    const propertyUpdate = await Property.updateOne(
-        propertyFilter,
-        { $set: { status: 'rented' }, $unset: { paymentReservationBookingId: 1, paymentReservationExpiresAt: 1 } }
-    );
-    if (propertyUpdate.modifiedCount) return true;
-
-    return Boolean(await Property.exists({
-        _id: propertyFilter._id,
-        status: 'rented'
-    }));
-}
-
-async function releaseExpiredReservation(property, secretKey) {
-    const reservedBookingId = property.paymentReservationBookingId;
-    if (!reservedBookingId) return true;
-
-    const reservedBooking = await Booking.findById(reservedBookingId)
-        .populate('studentId', 'email')
-        .populate('propertyId', 'status');
-    if (reservedBooking?.paymentStatus === 'pending' && reservedBooking.paymentReference) {
-        const transaction = await fetchVerifiedTransaction(reservedBooking.paymentReference, secretKey);
-        if (transaction.status === 'success') {
-            await recordVerifiedPayment(reservedBooking, reservedBooking.paymentReference, transaction);
-            return false;
-        }
-        if (!terminalPaymentStatuses.has(transaction.status)) return false;
-        await Booking.updateOne(
-            { _id: reservedBooking._id, paymentReference: reservedBooking.paymentReference, paymentStatus: 'pending' },
-            { $set: { paymentStatus: 'failed', paymentAuthorizationUrl: null } }
-        );
-    } else if (reservedBooking?.paymentStatus === 'paid' && reservedBooking.paymentReference) {
-        const transaction = await fetchVerifiedTransaction(reservedBooking.paymentReference, secretKey);
-        await recordVerifiedPayment(reservedBooking, reservedBooking.paymentReference, transaction);
-        return false;
-    }
-
-    const release = await Property.updateOne(
-        { _id: property._id, paymentReservationBookingId: reservedBookingId, status: 'available' },
-        { $unset: { paymentReservationBookingId: 1, paymentReservationExpiresAt: 1 } }
-    );
-    return Boolean(release.modifiedCount);
-}
-
-async function reservePropertyForCheckout(propertyId, booking, secretKey) {
-    const property = await Property.findById(propertyId).select('status verificationStatus listingType paymentReservationBookingId paymentReservationExpiresAt');
-    if (!property || property.status !== 'available' || property.verificationStatus !== 'verified' || property.listingType !== 'rent') {
-        return false;
-    }
-
-    const currentReservationId = property.paymentReservationBookingId;
-    if (currentReservationId && String(currentReservationId) !== String(booking._id)) {
-        if (!property.paymentReservationExpiresAt || property.paymentReservationExpiresAt > new Date()) return false;
-        if (!await releaseExpiredReservation(property, secretKey)) return false;
-    }
-
-    const reservationFilter = {
-        _id: property._id,
-        status: 'available',
-        verificationStatus: 'verified',
-        listingType: 'rent',
-        $or: [
-            { paymentReservationBookingId: null },
-            { paymentReservationBookingId: { $exists: false } },
-            { paymentReservationBookingId: booking._id }
-        ]
-    };
-    const reservation = await Property.findOneAndUpdate(
-        reservationFilter,
-        {
-            $set: {
-                paymentReservationBookingId: booking._id,
-                paymentReservationExpiresAt: new Date(Date.now() + PAYMENT_RESERVATION_MS)
-            }
-        },
-        { new: true }
-    ).select('_id');
-    return Boolean(reservation);
 }
 
 async function initializePaystackCheckout(req, res, booking, property, secretKey) {
@@ -399,6 +280,7 @@ async function initializePaystackCheckout(req, res, booking, property, secretKey
     if (booking.paymentStatus === 'paid' && !['expired', 'cancelled'].includes(booking.status)) {
         return res.redirect('/my-bookings?payment=already-paid');
     }
+    if (booking.paymentIssue) return res.redirect('/my-bookings?payment=review');
     if (!await reservePropertyForCheckout(property._id, booking, secretKey)) {
         return res.status(409).render('error', {
             statusCode: 409,
@@ -687,6 +569,7 @@ router.post('/payments/paystack/webhook', async (req, res) => {
         const fulfilled = await recordVerifiedPayment(booking, reference, transaction);
         if (!fulfilled) {
             console.warn('Paystack webhook transaction could not be fulfilled:', { reference });
+            if (await Booking.exists({ _id: booking._id, paymentIssue: { $ne: null } })) return res.sendStatus(200);
             return res.status(503).json({ message: 'Payment is being reconciled.' });
         }
         return res.sendStatus(200);
@@ -735,9 +618,11 @@ router.get('/payments/paystack/callback', async (req, res, next) => {
         }
 
         const fulfilled = await recordVerifiedPayment(booking, reference, transaction);
-        return fulfilled
-            ? res.redirect(`/my-bookings?payment=success&reference=${encodeURIComponent(reference)}`)
-            : res.redirect('/my-bookings?payment=verify');
+        if (fulfilled) return res.redirect(`/my-bookings?payment=success&reference=${encodeURIComponent(reference)}`);
+        if (await Booking.exists({ _id: booking._id, paymentIssue: { $ne: null } })) {
+            return res.redirect('/my-bookings?payment=review');
+        }
+        return res.redirect('/my-bookings?payment=verify');
     } catch (error) {
         return next(error);
     }

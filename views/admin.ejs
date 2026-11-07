@@ -22,6 +22,7 @@
     </div>
 </nav>
 <main class="container admin-console py-5">
+    <p class="text-end mb-2"><a class="text-link" href="/admin/audit-log"><i class="bi bi-journal-text me-1"></i>Audit log</a></p>
     <div class="admin-page-heading mb-4">
         <div>
             <span class="eyebrow text-uppercase">Admin console</span>
@@ -33,6 +34,8 @@
 
     <% if (adminMessage === 'active-stay') { %>
         <div class="alert alert-warning" role="status">This home has an active paid stay, so it cannot be marked available.</div>
+    <% } else if (adminMessage === 'listing-archived') { %>
+        <div class="alert alert-info" role="status">This listing has payment history, so it was archived and hidden instead of deleted.</div>
     <% } else if (adminMessage === 'listing-updated') { %>
         <div class="alert alert-success" role="status">Listing status updated.</div>
     <% } %>

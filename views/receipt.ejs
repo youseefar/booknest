@@ -14,7 +14,7 @@
     <main class="container receipt-page">
         <div class="receipt-toolbar">
             <a class="btn btn-outline-secondary" href="/my-bookings"><i class="bi bi-arrow-left me-2" aria-hidden="true"></i>My bookings</a>
-            <button class="btn btn-primary" type="button" onclick="window.print()"><i class="bi bi-printer me-2" aria-hidden="true"></i>Print / Save PDF</button>
+            <button class="btn btn-primary" type="button" data-print-page><i class="bi bi-printer me-2" aria-hidden="true"></i>Print / Save PDF</button>
         </div>
         <article class="receipt-sheet">
             <header class="receipt-header">
@@ -41,5 +41,6 @@
             <footer class="receipt-footer">Keep this receipt for your records. Payment status was verified with Paystack.</footer>
         </article>
     </main>
+    <script src="/js/print-page.js" defer></script>
 </body>
 </html>
