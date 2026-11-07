@@ -47,10 +47,10 @@
 			<div class="alert alert-warning" role="status">Payment was not completed. Open the home listing to try again.</div>
 		<% } else if (!landlordView && paymentResult === 'verify') { %>
 			<div class="alert alert-info" role="status">We could not confirm the payment yet. Please check your booking status again shortly.</div>
-		<% } else if (!landlordView && paymentResult === 'review') { %>
-			<div class="alert alert-warning" role="status">Your payment was received, but this home was taken before it could be confirmed. Contact support with your payment reference so it can be reviewed and refunded.</div>
 		<% } else if (!landlordView && paymentResult === 'already-paid') { %>
 			<div class="alert alert-info" role="status">This booking has already been paid.</div>
+		<% } else if (!landlordView && paymentResult === 'review') { %>
+			<div class="alert alert-warning" role="status">Your payment was received but this home could not be secured for you. Our team will review it and arrange a refund or a solution. Please contact support with your payment reference.</div>
 		<% } %>
 
 		<div class="inquiry-list">
