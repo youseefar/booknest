@@ -35,7 +35,7 @@
     <% if (adminMessage === 'active-stay') { %>
         <div class="alert alert-warning" role="status">This home has an active paid stay, so it cannot be marked available.</div>
     <% } else if (adminMessage === 'listing-archived') { %>
-        <div class="alert alert-info" role="status">This listing has payment history, so it was archived and hidden instead of deleted.</div>
+        <div class="alert alert-info" role="status">The listing is removed from the site. Because it has payments or a payment in progress, it was archived and its payment records were kept instead of erased.</div>
     <% } else if (adminMessage === 'listing-updated') { %>
         <div class="alert alert-success" role="status">Listing status updated.</div>
     <% } %>
@@ -285,7 +285,7 @@
                         </select>
                         <button class="btn btn-outline-secondary btn-sm" type="submit">Set</button>
                     </form>
-                    <form method="POST" action="/admin/properties/<%= property._id %>/delete" data-confirm-title="Delete this property?" data-confirm-message="This permanently removes the listing, booking history, and sale inquiries." data-confirm-action="Delete property" data-confirm-variant="danger">
+                    <form method="POST" action="/admin/properties/<%= property._id %>/delete" data-confirm-title="Delete this property?" data-confirm-message="This removes the listing from the site. If it has payments, it is archived and its payment records are kept." data-confirm-action="Delete property" data-confirm-variant="danger">
                         <button class="btn btn-outline-danger btn-sm" type="submit" aria-label="Delete <%= property.title %>"><i class="bi bi-trash3"></i></button>
                     </form>
                 </div>

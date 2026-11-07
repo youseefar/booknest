@@ -48,7 +48,7 @@ router.get('/admin', requireRole('admin'), async (req, res, next) => {
             }
             : {};
         if (role) searchFilter.role = role;
-        const propertyFilter = {};
+        const propertyFilter = { archivedAt: null };
         if (propertyStatus) propertyFilter.status = propertyStatus;
         if (verificationStatus) propertyFilter.verificationStatus = verificationStatus;
 
@@ -236,43 +236,39 @@ async function settleCheckoutsBeforeDelete(property) {
     return { released: true, settled: abandoned.length };
 }
 
+async function archiveProperty(req, res, property, reason) {
+    await Property.updateOne(
+        { _id: property._id },
+        { $set: { archivedAt: new Date(), status: 'maintenance', verificationStatus: 'rejected', featuredUntil: null } }
+    );
+    await recordAudit(req, 'property.archive', { targetType: 'property', targetId: property._id, details: `kept because ${reason}` });
+    return res.redirect('/admin?message=listing-archived');
+}
+
+// An admin can always remove a listing. When money is involved the listing is archived instead of
+// erased: it disappears from the site and the admin list, but its bookings and payment records
+// stay, so renters' receipts keep working and a refund can still be proven.
 router.post('/admin/properties/:id/delete', requireRole('admin'), async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
     const existingProperty = await Property.findById(req.params.id)
         .select('videoPublicId paymentReservationBookingId paymentReservationExpiresAt');
     if (!existingProperty) return res.status(404).send('Property not found.');
 
-    const now = new Date();
-    if (await Booking.exists({
-        propertyId: existingProperty._id,
-        paymentStatus: 'paid',
-        status: 'approved',
-        subscriptionExpiresAt: { $gt: now }
-    })) {
-        return res.status(409).send('This property has an active paid stay and cannot be deleted or archived until the stay ends.');
-    }
-
-    const lock = await settleCheckoutsBeforeDelete(existingProperty);
-    if (!lock.released) {
-        const messages = {
-            paid: 'Paystack shows a confirmed payment for this property, so it cannot be deleted. Mark it rented or unavailable instead.',
-            inprogress: 'A payment on this property is still in progress with Paystack. Try again once it finishes.',
-            unverified: 'Paystack could not confirm whether an earlier payment attempt was completed, so the property was not deleted. Check the Paystack settings and try again.'
-        };
-        return res.status(409).send(messages[lock.reason]);
-    }
-
-    // Paid booking history is a financial record: archive the listing instead of deleting it.
     if (await Booking.exists({
         propertyId: existingProperty._id,
         $or: [{ paymentStatus: 'paid' }, { 'paymentHistory.0': { $exists: true } }]
     })) {
-        await Property.updateOne(
-            { _id: existingProperty._id },
-            { $set: { archivedAt: new Date(), status: 'maintenance', verificationStatus: 'rejected', featuredUntil: null } }
-        );
-        await recordAudit(req, 'property.archive', { targetType: 'property', targetId: existingProperty._id, details: 'kept because of payment history' });
-        return res.redirect('/admin?message=listing-archived');
+        return archiveProperty(req, res, existingProperty, 'it has payment records');
+    }
+
+    const settlement = await settleCheckoutsBeforeDelete(existingProperty);
+    if (!settlement.released) {
+        const reasons = {
+            paid: 'a payment is confirmed with Paystack',
+            inprogress: 'a payment is in progress with Paystack',
+            unverified: 'Paystack could not confirm an earlier payment attempt'
+        };
+        return archiveProperty(req, res, existingProperty, reasons[settlement.reason]);
     }
 
     const property = await Property.findOneAndDelete({
@@ -280,9 +276,9 @@ router.post('/admin/properties/:id/delete', requireRole('admin'), async (req, re
         $or: [{ paymentReservationBookingId: null }, { paymentReservationBookingId: { $exists: false } }]
     });
     if (!property) {
-        const exists = await Property.exists({ _id: req.params.id });
-        if (!exists) return res.status(404).send('Property not found.');
-        return res.status(409).send('This property has an active payment and cannot be deleted until checkout finishes.');
+        if (!await Property.exists({ _id: req.params.id })) return res.status(404).send('Property not found.');
+        // A checkout started while the delete was running.
+        return archiveProperty(req, res, existingProperty, 'a checkout started during the delete');
     }
     await cleanupOrQueueVideos([property.videoPublicId]);
     // Keep bookings that already have a Paystack reference (abandoned attempts): a late payment on

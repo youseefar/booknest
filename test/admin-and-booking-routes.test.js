@@ -108,20 +108,24 @@ test('admin delete archives a property with paid history instead of erasing it',
     assert.ok(await AuditLog.exists({ action: 'property.archive', targetId: String(property._id) }));
 });
 
-test('admin cannot delete or archive a property with an active paid stay', { skip }, async () => {
+test('admin can remove a property with an active paid stay: it is archived and the stay is kept', { skip }, async () => {
     const admin = await makeUser('admin');
     const landlord = await makeUser('landlord');
     const student = await makeUser('student');
     const property = await makeProperty(landlord, { status: 'rented' });
-    await makeBooking(student, property, {
+    const booking = await makeBooking(student, property, {
         status: 'approved', paymentStatus: 'paid', paymentReference: `REF_${property._id}`,
         paymentAmountKobo: 5000000, paymentPaidAt: new Date(), subscriptionExpiresAt: new Date(Date.now() + 20 * 86400000)
     });
     currentUser = admin;
-    assert.equal((await post(`/admin/properties/${property._id}/delete`)).status, 409);
+    const result = await post(`/admin/properties/${property._id}/delete`);
+    assert.equal(result.status, 302);
+    assert.match(result.location, /listing-archived/);
     const after = await Property.findById(property._id);
-    assert.equal(after.status, 'rented');
-    assert.equal(after.archivedAt, null);
+    assert.ok(after.archivedAt, 'the listing is hidden');
+    assert.equal(after.verificationStatus, 'rejected');
+    const kept = await Booking.findById(booking._id);
+    assert.equal(kept.paymentStatus, 'paid', 'the paid stay and its receipt are kept');
 });
 
 test('admin can delete a property with no payment history and the action is logged', { skip }, async () => {

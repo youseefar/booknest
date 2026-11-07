@@ -71,7 +71,7 @@ async function deleteProperty(property) {
     const response = await fetch(`${baseUrl}/admin/properties/${property._id}/delete`, {
         method: 'POST', redirect: 'manual', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({})
     });
-    return { status: response.status, text: await response.text() };
+    return { status: response.status, text: await response.text(), location: response.headers.get('location') };
 }
 
 async function makeUser(role) {
@@ -111,38 +111,42 @@ test('a renter who opened the payment page and left does not block deletion', { 
     assert.equal(paystackCalls.length, 1);
 });
 
-test('a payment Paystack has confirmed blocks deletion', { skip }, async () => {
+test('a payment Paystack has confirmed is never erased: the listing is archived', { skip }, async () => {
     const { property, booking } = await lockedProperty();
     currentUser = await makeUser('admin');
     paystackReply = () => verifyResponse('success');
 
     const result = await deleteProperty(property);
-    assert.equal(result.status, 409);
-    assert.match(result.text, /confirmed payment/);
-    assert.ok(await Property.exists({ _id: property._id }));
-    assert.equal((await Booking.findById(booking._id)).paymentStatus, 'pending');
+    assert.equal(result.status, 302);
+    assert.match(result.location, /listing-archived/);
+    const archived = await Property.findById(property._id);
+    assert.ok(archived.archivedAt);
+    assert.equal(archived.status, 'maintenance', 'no longer offered to renters');
+    assert.equal((await Booking.findById(booking._id)).paymentStatus, 'pending', 'the booking is untouched');
 });
 
-test('a payment still in progress with Paystack blocks deletion', { skip }, async () => {
-    const { property } = await lockedProperty();
+test('a payment still in progress with Paystack archives the listing instead of erasing it', { skip }, async () => {
+    const { property, booking } = await lockedProperty();
     currentUser = await makeUser('admin');
     paystackReply = () => verifyResponse('ongoing');
 
     const result = await deleteProperty(property);
-    assert.equal(result.status, 409);
-    assert.match(result.text, /in progress/);
-    assert.ok(await Property.exists({ _id: property._id }));
+    assert.equal(result.status, 302);
+    assert.match(result.location, /listing-archived/);
+    assert.ok((await Property.findById(property._id)).archivedAt);
+    assert.ok(await Booking.exists({ _id: booking._id }));
 });
 
-test('if Paystack cannot be reached the property is kept, not deleted', { skip }, async () => {
-    const { property } = await lockedProperty();
+test('if Paystack cannot be reached the listing is archived, never erased on a guess', { skip }, async () => {
+    const { property, booking } = await lockedProperty();
     currentUser = await makeUser('admin');
     paystackReply = () => { throw new TypeError('fetch failed'); };
 
     const result = await deleteProperty(property);
-    assert.equal(result.status, 409);
-    assert.match(result.text, /could not confirm/);
-    assert.ok(await Property.exists({ _id: property._id }));
+    assert.equal(result.status, 302);
+    assert.match(result.location, /listing-archived/);
+    assert.ok((await Property.findById(property._id)).archivedAt);
+    assert.ok(await Booking.exists({ _id: booking._id }));
 });
 
 test('a reference Paystack has never seen cannot have been paid, so deletion proceeds', { skip }, async () => {
