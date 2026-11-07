@@ -13,8 +13,6 @@ jobs:
         image: mongo:7
         ports:
           - 27017:27017
-    env:
-      TEST_MONGODB_URI: mongodb://localhost:27017/booknest_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,3 +21,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+        env:
+          MONGODB_TEST_URI: mongodb://127.0.0.1:27017/booknest_test

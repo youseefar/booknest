@@ -16,7 +16,6 @@ const {
 } = require('../services/paystack');
 
 const { recordVerifiedPayment } = require('../services/payment-recording');
-const { recordAudit } = require('../services/audit-log');
 const router = express.Router();
 
 function normalizeAccountName(value) {
@@ -167,7 +166,6 @@ router.post('/payments/admin-payout-account', requireRole('admin'), async (req, 
         req.user.payoutAccountName = account.account_name;
         req.user.payoutAccountLast4 = accountNumber.slice(-4);
         await req.user.save();
-        await recordAudit(req, 'admin.payout_account_saved', { targetType: 'user', targetId: req.user._id, details: `last4=${accountNumber.slice(-4)}` });
         return res.redirect('/admin?payout=account-saved');
     } catch (error) {
         if (isDatabaseError(error)) return next(error);
@@ -206,11 +204,9 @@ router.post('/payments/admin/withdraw', requireRole('admin'), async (req, res) =
         });
         if (transfer?.status === 'otp' && transfer.transfer_code) {
             req.session.pendingAdminTransfer = { transferCode: transfer.transfer_code, amountKobo, reference };
-            await recordAudit(req, 'admin.withdraw_requested', { targetType: 'transfer', targetId: reference, details: `amountKobo=${amountKobo}` });
             return res.redirect('/admin?payout=otp');
         }
         req.session.pendingAdminTransfer = null;
-        await recordAudit(req, 'admin.withdraw_sent', { targetType: 'transfer', targetId: reference, details: `amountKobo=${amountKobo}` });
         return res.redirect('/admin?payout=sent');
     } catch (error) {
         console.error('Admin balance withdrawal failed:', error.name);
@@ -232,7 +228,6 @@ router.post('/payments/admin/withdraw/finalize', requireRole('admin'), async (re
             method: 'POST',
             body: JSON.stringify({ transfer_code: pendingTransfer.transferCode, otp })
         });
-        await recordAudit(req, 'admin.withdraw_finalized', { targetType: 'transfer', targetId: pendingTransfer.reference || '', details: `amountKobo=${pendingTransfer.amountKobo || ''}` });
         req.session.pendingAdminTransfer = null;
         return res.redirect('/admin?payout=complete');
     } catch (error) {
@@ -569,6 +564,7 @@ router.post('/payments/paystack/webhook', async (req, res) => {
         const fulfilled = await recordVerifiedPayment(booking, reference, transaction);
         if (!fulfilled) {
             console.warn('Paystack webhook transaction could not be fulfilled:', { reference });
+            // A payment already flagged for refund review will not succeed on retry.
             if (await Booking.exists({ _id: booking._id, paymentIssue: { $ne: null } })) return res.sendStatus(200);
             return res.status(503).json({ message: 'Payment is being reconciled.' });
         }

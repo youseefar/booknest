@@ -46,8 +46,7 @@ async function isPaidWithReference(bookingId, reference) {
 
 // Records a payment that Paystack has verified as successful. Safe to call repeatedly and
 // concurrently: the property is claimed first with a conditional update, and the booking is
-// marked paid only after the claim succeeds. Returns true when the booking is paid and its
-// property is secured.
+// marked paid only after the claim succeeds. Returns true when the booking is paid.
 async function recordVerifiedPayment(booking, reference, transaction) {
     if (!isVerifiedPaystackTransaction(booking, reference, transaction)) return false;
 
@@ -55,7 +54,7 @@ async function recordVerifiedPayment(booking, reference, transaction) {
     const now = new Date();
 
     if (booking.paymentStatus === 'paid' && booking.paymentReference === reference) {
-        // Duplicate webhook or callback. Repair a stay that was marked paid but never secured.
+        // Duplicate webhook or callback. Repair a live stay that was marked paid but never secured.
         const stillActive = booking.status === 'approved'
             && booking.subscriptionExpiresAt
             && new Date(booking.subscriptionExpiresAt) > now;
