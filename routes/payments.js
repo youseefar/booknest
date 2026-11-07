@@ -253,6 +253,73 @@ async function fetchVerifiedTransaction(reference, secretKey) {
     return paystackRequest(`/transaction/verify/${encodeURIComponent(reference)}`, secretKey, { method: 'GET' });
 }
 
+async function releaseExpiredReservation(property, secretKey) {
+    const reservedBookingId = property.paymentReservationBookingId;
+    if (!reservedBookingId) return true;
+
+    const reservedBooking = await Booking.findById(reservedBookingId)
+        .populate('studentId', 'email')
+        .populate('propertyId', 'status');
+    if (reservedBooking?.paymentStatus === 'pending' && reservedBooking.paymentReference) {
+        const transaction = await fetchVerifiedTransaction(reservedBooking.paymentReference, secretKey);
+        if (transaction.status === 'success') {
+            await recordVerifiedPayment(reservedBooking, reservedBooking.paymentReference, transaction);
+            return false;
+        }
+        if (!terminalPaymentStatuses.has(transaction.status)) return false;
+        await Booking.updateOne(
+            { _id: reservedBooking._id, paymentReference: reservedBooking.paymentReference, paymentStatus: 'pending' },
+            { $set: { paymentStatus: 'failed', paymentAuthorizationUrl: null } }
+        );
+    } else if (reservedBooking?.paymentStatus === 'paid' && reservedBooking.paymentReference) {
+        const transaction = await fetchVerifiedTransaction(reservedBooking.paymentReference, secretKey);
+        await recordVerifiedPayment(reservedBooking, reservedBooking.paymentReference, transaction);
+        return false;
+    }
+
+    const release = await Property.updateOne(
+        { _id: property._id, paymentReservationBookingId: reservedBookingId, status: 'available' },
+        { $unset: { paymentReservationBookingId: 1, paymentReservationExpiresAt: 1 } }
+    );
+    return Boolean(release.modifiedCount);
+}
+
+async function reservePropertyForCheckout(propertyId, booking, secretKey) {
+    const property = await Property.findById(propertyId).select('status verificationStatus listingType paymentReservationBookingId paymentReservationExpiresAt');
+    if (!property || property.status !== 'available' || property.verificationStatus !== 'verified' || property.listingType !== 'rent') {
+        return false;
+    }
+
+    const currentReservationId = property.paymentReservationBookingId;
+    if (currentReservationId && String(currentReservationId) !== String(booking._id)) {
+        if (!property.paymentReservationExpiresAt || property.paymentReservationExpiresAt > new Date()) return false;
+        if (!await releaseExpiredReservation(property, secretKey)) return false;
+    }
+
+    const reservationFilter = {
+        _id: property._id,
+        status: 'available',
+        verificationStatus: 'verified',
+        listingType: 'rent',
+        $or: [
+            { paymentReservationBookingId: null },
+            { paymentReservationBookingId: { $exists: false } },
+            { paymentReservationBookingId: booking._id }
+        ]
+    };
+    const reservation = await Property.findOneAndUpdate(
+        reservationFilter,
+        {
+            $set: {
+                paymentReservationBookingId: booking._id,
+                paymentReservationExpiresAt: new Date(Date.now() + PAYMENT_RESERVATION_MS)
+            }
+        },
+        { new: true }
+    ).select('_id');
+    return Boolean(reservation);
+}
+
 async function initializePaystackCheckout(req, res, booking, property, secretKey) {
     if (property.listingType !== 'rent') {
         return res.status(400).send('Online booking payments are only available for rental listings.');
