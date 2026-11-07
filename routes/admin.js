@@ -187,46 +187,53 @@ router.post('/admin/properties/:id/feature', requireRole('admin'), async (req, r
 });
 
 const ABANDONED_TRANSACTION_STATUSES = new Set(['failed', 'abandoned', 'reversed']);
+const MAX_CHECKOUTS_TO_SETTLE = 25;
 
-// Frees a checkout lock that has expired, but only after Paystack confirms the payment was
-// never completed. Returns { released: true } or { released: false, reason }.
-async function releaseStaleCheckoutLock(property) {
-    const bookingId = property.paymentReservationBookingId;
-    if (!bookingId) return { released: true };
-    if (!property.paymentReservationExpiresAt || property.paymentReservationExpiresAt > new Date()) {
-        return { released: false, reason: 'active' };
-    }
+// Settles every unfinished checkout on a property before it is deleted. A renter who only opened
+// the payment page and left has not paid, so Paystack reports that checkout as abandoned and it
+// must not block the admin. Only a confirmed payment, or one Paystack still has in progress,
+// does. Abandoned attempts are marked failed and kept, so a payment completed later on an old
+// payment page is flagged for refund review instead of being lost.
+// Returns { released: true } or { released: false, reason: 'paid' | 'inprogress' | 'unverified' }.
+async function settleCheckoutsBeforeDelete(property) {
+    const checkouts = await Booking.find({
+        propertyId: property._id,
+        paymentStatus: 'pending',
+        paymentReference: { $exists: true, $nin: [null, ''] }
+    }).select('paymentReference').limit(MAX_CHECKOUTS_TO_SETTLE);
 
-    const booking = await Booking.findById(bookingId).select('paymentStatus paymentReference');
-    if (booking?.paymentStatus === 'paid') return { released: false, reason: 'paid' };
-
-    if (booking?.paymentStatus === 'pending' && booking.paymentReference) {
+    const abandoned = [];
+    if (checkouts.length) {
         const secretKey = getPaystackSecretKey();
         if (!secretKey) return { released: false, reason: 'unverified' };
-        try {
-            const transaction = await paystackRequest(
-                `/transaction/verify/${encodeURIComponent(booking.paymentReference)}`,
-                secretKey,
-                { method: 'GET' }
-            );
-            if (!ABANDONED_TRANSACTION_STATUSES.has(transaction?.status)) {
-                return { released: false, reason: transaction?.status === 'success' ? 'paid' : 'unverified' };
+        for (const checkout of checkouts) {
+            try {
+                const transaction = await paystackRequest(
+                    `/transaction/verify/${encodeURIComponent(checkout.paymentReference)}`,
+                    secretKey,
+                    { method: 'GET' }
+                );
+                if (transaction?.status === 'success') return { released: false, reason: 'paid' };
+                if (!ABANDONED_TRANSACTION_STATUSES.has(transaction?.status)) return { released: false, reason: 'inprogress' };
+            } catch (error) {
+                // A reference Paystack has never seen cannot have been paid.
+                if (!/not found/i.test(String(error?.message || ''))) return { released: false, reason: 'unverified' };
             }
-        } catch (error) {
-            // A reference Paystack has never seen cannot have been paid.
-            if (!/not found/i.test(String(error?.message || ''))) return { released: false, reason: 'unverified' };
+            abandoned.push(checkout._id);
         }
-        await Booking.updateOne(
-            { _id: booking._id, paymentStatus: 'pending' },
+    }
+
+    if (abandoned.length) {
+        await Booking.updateMany(
+            { _id: { $in: abandoned }, paymentStatus: 'pending' },
             { $set: { paymentStatus: 'failed', paymentAuthorizationUrl: null } }
         );
     }
-
     await Property.updateOne(
-        { _id: property._id, paymentReservationBookingId: bookingId },
+        { _id: property._id },
         { $unset: { paymentReservationBookingId: 1, paymentReservationExpiresAt: 1 } }
     );
-    return { released: true };
+    return { released: true, settled: abandoned.length };
 }
 
 router.post('/admin/properties/:id/delete', requireRole('admin'), async (req, res) => {
@@ -245,12 +252,12 @@ router.post('/admin/properties/:id/delete', requireRole('admin'), async (req, re
         return res.status(409).send('This property has an active paid stay and cannot be deleted or archived until the stay ends.');
     }
 
-    const lock = await releaseStaleCheckoutLock(existingProperty);
+    const lock = await settleCheckoutsBeforeDelete(existingProperty);
     if (!lock.released) {
         const messages = {
-            active: 'A payment is in progress on this property. The checkout lock lasts 30 minutes; try again after it expires.',
-            paid: 'This property has a completed payment and cannot be deleted. Mark it rented or unavailable instead.',
-            unverified: 'Paystack could not confirm that the earlier payment attempt ended, so the property was not deleted. Try again shortly.'
+            paid: 'Paystack shows a confirmed payment for this property, so it cannot be deleted. Mark it rented or unavailable instead.',
+            inprogress: 'A payment on this property is still in progress with Paystack. Try again once it finishes.',
+            unverified: 'Paystack could not confirm whether an earlier payment attempt was completed, so the property was not deleted. Check the Paystack settings and try again.'
         };
         return res.status(409).send(messages[lock.reason]);
     }
@@ -278,7 +285,12 @@ router.post('/admin/properties/:id/delete', requireRole('admin'), async (req, re
         return res.status(409).send('This property has an active payment and cannot be deleted until checkout finishes.');
     }
     await cleanupOrQueueVideos([property.videoPublicId]);
-    await Booking.deleteMany({ propertyId: property._id });
+    // Keep bookings that already have a Paystack reference (abandoned attempts): a late payment on
+    // one of them is then flagged for refund review rather than going unrecorded.
+    await Booking.deleteMany({
+        propertyId: property._id,
+        $or: [{ paymentReference: { $exists: false } }, { paymentReference: null }, { paymentReference: '' }]
+    });
     await PropertyInquiry.deleteMany({ propertyId: property._id });
     await recordAudit(req, 'property.delete', { targetType: 'property', targetId: property._id, details: property.title });
     res.redirect('/admin');
