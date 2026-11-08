@@ -264,7 +264,7 @@ router.post('/add-property', requireRole('landlord'), parseVideoUpload, handleVi
         const cleanAddress = String(address || '').trim();
         const cleanAmenities = String(amenities || '').split(',').map(a => a.trim()).filter(Boolean);
         const numericPrice = Number(price);
-        if (!cleanTitle || cleanTitle.length > 120 || !cleanDescription || cleanDescription.length > 3000
+        if (!cleanTitle || cleanTitle.length > 120 || cleanDescription.length > 3000
             || !cleanLocation || cleanLocation.length > 120 || !cleanAddress || cleanAddress.length > 240
             || cleanAmenities.length > 20 || cleanAmenities.some(amenity => amenity.length > 80)
             || bedrooms === undefined || bathrooms === undefined
