@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="/css/landing.css">
 </head>
 <body class="landing">
+  <div class="ln-progress" aria-hidden="true"></div>
   <header class="ln-header">
     <div class="ln-shell ln-nav-shell">
       <a class="ln-brand" href="/" aria-label="Jacob Estate home"><img src="/jacobrent-mark.svg" alt=""><span>JACOB <b>ESTATE</b></span></a>
@@ -37,6 +38,8 @@
 
   <main>
     <section class="ln-hero">
+      <div class="ln-glow" aria-hidden="true"></div>
+      <div class="ln-floaters" aria-hidden="true"><i class="bi bi-key"></i><i class="bi bi-heart-fill"></i><i class="bi bi-house-heart"></i><i class="bi bi-stars"></i><i class="bi bi-door-open"></i><i class="bi bi-balloon-heart"></i></div>
       <div class="ln-particles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
       <div class="ln-shell ln-hero-grid">
         <div class="ln-hero-copy">
@@ -56,17 +59,18 @@
         <div class="ln-scene ln-reveal" style="--i:2" role="img" aria-label="An interactive three-dimensional house. Drag or swipe to turn it.">
           <div class="ln-ground"></div><div class="ln-ring ln-ring-1"></div><div class="ln-ring ln-ring-2"></div>
           <div class="ln-stage" aria-hidden="true">
-            <div class="ln-face ln-front"><div class="ln-window ln-win-1"></div><div class="ln-window ln-win-2"></div><div class="ln-door"></div></div>
+            <div class="ln-face ln-front"><div class="ln-window ln-win-1"></div><div class="ln-window ln-win-2"></div><div class="ln-doorway"></div><div class="ln-door"></div></div>
             <div class="ln-face ln-back"></div>
             <div class="ln-face ln-side ln-right"></div><div class="ln-face ln-side ln-left"></div>
             <div class="ln-face ln-gable ln-right"></div><div class="ln-face ln-gable ln-left"></div>
             <div class="ln-face ln-roof ln-roof-a"></div><div class="ln-face ln-roof ln-roof-b"></div>
-            <div class="ln-face ln-chimney"></div>
+            <div class="ln-face ln-chimney"><i></i><i></i><i></i></div>
             <div class="ln-orb ln-orb-1"></div><div class="ln-orb ln-orb-2"></div><div class="ln-orb ln-orb-3"></div>
             <div class="ln-tag ln-tag-1"><i class="bi bi-patch-check"></i><span><b>Verified homes</b><small>Explore with confidence</small></span></div>
             <div class="ln-tag ln-tag-2"><i class="bi bi-play-circle"></i><span><b>Video tours</b><small>See it before you visit</small></span></div>
           </div>
-          <span class="ln-hint">DRAG TO TURN</span>
+          <div class="ln-bubble" aria-hidden="true"><span>Hi, welcome home!</span></div>
+          <span class="ln-hint">DRAG TO TURN · TAP THE HOUSE</span>
         </div>
       </div>
     </section>
