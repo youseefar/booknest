@@ -28,7 +28,7 @@ function renderLoginError(res, message, returnTo = '', status = 400) {
 }
 
 function getPostLoginPath(user, returnTo, isNewAccount) {
-    if (user.role === 'landlord') return isNewAccount ? '/profile?setup=payout' : '/dashboard';
+    if (user.role === 'landlord') return isNewAccount ? '/payout-setup' : '/dashboard';
     return returnTo || '/dashboard';
 }
 

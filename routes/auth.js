@@ -93,7 +93,7 @@ router.post('/register', async (req, res, next) => {
     if (role === 'landlord') {
       return req.logIn(newUser, loginError => {
         if (loginError) return next(loginError);
-        return res.redirect('/profile?setup=payout');
+        return res.redirect('/payout-setup');
       });
     }
 

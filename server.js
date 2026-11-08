@@ -13,6 +13,7 @@ const googleAuthRoutes = require('./routes/google-auth');
 const propertyRoutes = require('./routes/property');
 const bookingRoutes = require('./routes/booking');
 const adminRoutes = require('./routes/admin');
+const { requirePayoutSetup } = require('./middleware/payout-setup');
 const paymentRoutes = require('./routes/payments');
 const legalRoutes = require('./routes/legal');
 const propertyInquiryRoutes = require('./routes/property-inquiry');
@@ -228,6 +229,7 @@ const passportSession = passport.session();
 app.use((req, res, next) => {
   return passportSession(req, res, next);
 });
+app.use(requirePayoutSetup);
 app.use('/', authRoutes);
 app.use('/', googleAuthRoutes);
 app.use('/', propertyRoutes);

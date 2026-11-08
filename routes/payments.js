@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Property = require('../models/Property');
 const { requireRole } = require('../middleware/auth');
+const { isPayoutReady } = require('../middleware/payout-setup');
 const { isDatabaseError } = require('../services/database-errors');
 const {
     PAYSTACK_API,
@@ -76,23 +77,31 @@ router.post('/payments/resolve-payout-account', requireRole('landlord', 'admin')
     }
 });
 
+// First-time setup page: new landlords land here and cannot reach their dashboard until it is complete.
+router.get('/payout-setup', requireRole('landlord'), (req, res) => {
+    if (isPayoutReady(req.user, getPaymentMode())) return res.redirect('/dashboard');
+    return res.render('payout-setup', { user: req.user, message: '' });
+});
+
 router.post('/payments/payout-account', requireRole('landlord'), async (req, res, next) => {
+    const onboarding = req.body.onboarding === '1';
+    const showPage = (status, message) => res.status(status).render(onboarding ? 'payout-setup' : 'profile', { user: req.user, message });
     const secretKey = getPaystackSecretKey();
     if (!secretKey) {
-        return res.status(503).render('profile', { user: req.user, message: paystackConfigurationMessage() });
+        return showPage(503, paystackConfigurationMessage());
     }
 
     const accountNumber = String(req.body.accountNumber || '').trim();
     const bankCode = String(req.body.bankCode || '').trim();
     const verifiedAccountName = String(req.body.verifiedAccountName || '').trim();
     if (!/^\d{10}$/.test(accountNumber) || !/^[a-z\d]{2,12}$/i.test(bankCode) || !verifiedAccountName) {
-        return res.status(400).render('profile', { user: req.user, message: 'Verify a valid 10-digit bank account before saving.' });
+        return showPage(400, 'Verify a valid 10-digit bank account before saving.');
     }
 
     try {
         const account = await resolvePayoutAccount(accountNumber, bankCode, secretKey);
         if (normalizeAccountName(account?.account_name) !== normalizeAccountName(verifiedAccountName)) {
-            return res.status(409).render('profile', { user: req.user, message: 'The verified account changed. Verify it again before saving.' });
+            return showPage(409, 'The verified account changed. Verify it again before saving.');
         }
 
         const payload = {
@@ -126,11 +135,12 @@ router.post('/payments/payout-account', requireRole('landlord'), async (req, res
         req.user.payoutAccountLast4 = accountNumber.slice(-4);
         await req.user.save();
 
+        if (onboarding) return res.redirect('/dashboard');
         return res.render('profile', { user: req.user, success: 'Your verified payout account is ready to receive rental payments.' });
     } catch (error) {
         if (isDatabaseError(error)) return next(error);
         console.error('Payout account setup failed:', error.name);
-        return res.status(502).render('profile', { user: req.user, message: 'Paystack could not save this payout account. Please try again.' });
+        return showPage(502, 'Paystack could not save this payout account. Please try again.');
     }
 });
 
