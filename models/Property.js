@@ -9,8 +9,9 @@ const propertySchema = new mongoose.Schema({
     },
     description: {
         type: String,
-        required: true,
-        maxlength: 3000
+        trim: true,
+        maxlength: 3000,
+        default: ''
     },
     price: {
         type: Number,
