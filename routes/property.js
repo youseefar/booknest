@@ -121,12 +121,12 @@ router.get('/properties', async (req, res, next) => {
         const sort = parseSort(req.query.sort);
         const requestedPage = parsePage(req.query.page);
         const filter = req.user?.role === 'admin'
-            ? {}
+            ? { archivedAt: null }
             : req.user?.role === 'landlord'
             ? {
                 $or: [
                     { status: { $in: ['available', 'rented', 'sold'] }, verificationStatus: 'verified' },
-                    { landlordId: req.user._id }
+                    { landlordId: req.user._id, archivedAt: null }
                 ]
             }
             : { status: { $in: ['available', 'rented', 'sold'] }, verificationStatus: 'verified' };
@@ -222,7 +222,7 @@ router.get('/my-properties', requireRole('landlord'), async (req, res, next) => 
     }
 
     try {
-        const filter = { landlordId: req.user._id };
+        const filter = { landlordId: req.user._id, archivedAt: null };
         const sort = parseSort(req.query.sort);
         const requestedPage = parsePage(req.query.page);
         const totalCount = await Property.countDocuments(filter);
@@ -315,7 +315,7 @@ router.post('/add-property', requireRole('landlord'), parseVideoUpload, handleVi
 // Edit listing details
 router.get('/property/:id/edit', requireRole('landlord'), async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found');
-    const property = await Property.findOne({ _id: req.params.id, landlordId: req.user._id });
+    const property = await Property.findOne({ _id: req.params.id, landlordId: req.user._id, archivedAt: null });
     if (!property) return res.status(404).send('Property not found');
     if (property.paymentReservationBookingId) {
         return res.status(409).send('This property has an active payment and cannot be changed until checkout finishes.');
@@ -344,7 +344,7 @@ router.post('/property/:id/edit', requireRole('landlord'), async (req, res, next
             return res.status(400).send('Please provide valid property details.');
         }
 
-        const existingProperty = await Property.findOne({ _id: req.params.id, landlordId: req.user._id });
+        const existingProperty = await Property.findOne({ _id: req.params.id, landlordId: req.user._id, archivedAt: null });
         if (!existingProperty) return res.status(404).send('Property not found');
         if (existingProperty.paymentReservationBookingId) {
             return res.status(409).send('This property has an active payment and cannot be changed until checkout finishes.');
@@ -358,7 +358,7 @@ router.post('/property/:id/edit', requireRole('landlord'), async (req, res, next
         }
 
         const property = await Property.findOneAndUpdate(
-            { _id: req.params.id, landlordId: req.user._id },
+            { _id: req.params.id, landlordId: req.user._id, archivedAt: null },
             { title: cleanTitle, description: cleanDescription, price: numericPrice, listingType, location: cleanLocation, address: cleanAddress, bedrooms, bathrooms, amenities: cleanAmenities, verificationStatus: 'pending' },
             { new: true, runValidators: true }
         );
@@ -376,7 +376,7 @@ router.post('/property/:id/video', requireRole('landlord'), parseVideoUpload, ha
         if (!req.file) return res.status(400).send('Choose a video to upload.');
         if (!isCloudinaryConfigured()) return res.status(503).send('Video uploads are temporarily unavailable.');
 
-        const property = await Property.findOne({ _id: req.params.id, landlordId: req.user._id });
+        const property = await Property.findOne({ _id: req.params.id, landlordId: req.user._id, archivedAt: null });
         if (!property) return res.status(404).send('Property not found.');
         if (property.paymentReservationBookingId) {
             return res.status(409).send('This property has an active payment and its video cannot be changed.');
@@ -387,6 +387,7 @@ router.post('/property/:id/video', requireRole('landlord'), parseVideoUpload, ha
             {
                 _id: property._id,
                 landlordId: req.user._id,
+                archivedAt: null,
                 $or: [{ paymentReservationBookingId: null }, { paymentReservationBookingId: { $exists: false } }]
             },
             {
@@ -431,13 +432,15 @@ router.post('/property/:id/video/delete', requireRole('landlord'), async (req, r
         if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
         const existingProperty = await Property.findOne({
             _id: req.params.id,
-            landlordId: req.user._id
+            landlordId: req.user._id,
+            archivedAt: null
         }).select('videoPublicId');
         if (!existingProperty) return res.status(404).send('Property not found.');
         const property = await Property.findOneAndUpdate(
             {
                 _id: req.params.id,
                 landlordId: req.user._id,
+                archivedAt: null,
                 $or: [{ paymentReservationBookingId: null }, { paymentReservationBookingId: { $exists: false } }]
             },
             { $set: { videoUrl: null, videoPublicId: null, videoFormat: null, verificationStatus: 'pending' } },
@@ -486,7 +489,7 @@ router.post('/property/:id/reviews', requireRole('student'), async (req, res, ne
 
 router.post('/property/:id/status', requireRole('landlord'), async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Property not found.');
-    const property = await Property.findOne({ _id: req.params.id, landlordId: req.user._id });
+    const property = await Property.findOne({ _id: req.params.id, landlordId: req.user._id, archivedAt: null });
     if (!property) return res.status(404).send('Property not found');
     if (property.paymentReservationBookingId) {
         return res.status(409).send('This property has an active payment and cannot be changed until checkout finishes.');
@@ -499,6 +502,7 @@ router.post('/property/:id/status', requireRole('landlord'), async (req, res) =>
         {
             _id: property._id,
             landlordId: req.user._id,
+            archivedAt: null,
             $or: [{ paymentReservationBookingId: null }, { paymentReservationBookingId: { $exists: false } }]
         },
         { $set: { status: req.body.status } },

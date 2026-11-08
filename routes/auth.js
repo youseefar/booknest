@@ -306,8 +306,10 @@ router.get('/dashboard', (req, res, next) => {
 
   if (req.user.role === 'landlord') {
     return Property.find({ landlordId: req.user._id }).sort({ createdAt: -1 })
-      .then(async properties => {
-        const propertyIds = properties.map(property => property._id);
+      .then(async allProperties => {
+        // Archived listings stay in the booking lookup so landlords still see paid stays, but are not listed.
+        const properties = allProperties.filter(property => !property.archivedAt);
+        const propertyIds = allProperties.map(property => property._id);
         const [bookings, propertyInquiries] = await Promise.all([
           Booking.find({
             propertyId: { $in: propertyIds },

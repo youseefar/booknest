@@ -56,7 +56,7 @@ router.get('/admin', requireRole('admin'), async (req, res, next) => {
             Property.find({ verificationStatus: 'pending' }).populate('landlordId', 'name email').sort({ createdAt: 1 }),
             Property.find(propertyFilter).populate('landlordId', 'name email').sort({ updatedAt: -1 }).limit(20),
             User.find(searchFilter).select('-password').sort({ createdAt: -1 }),
-            Property.countDocuments(),
+            Property.countDocuments({ archivedAt: null }),
             User.countDocuments(),
             User.countDocuments({ role: 'student' }),
             User.countDocuments({ role: 'landlord' }),
