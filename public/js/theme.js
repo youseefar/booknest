@@ -3,7 +3,6 @@
     const root = document.documentElement;
     let savedTheme = null;
     let pageLoader;
-    let loaderRemovalTimer;
 
     const initializeConfirmations = () => {
         const backdrop = document.createElement('div');
@@ -221,46 +220,114 @@
         window.setTimeout(showInstallPrompt, 1800);
     }
 
-    const createLoader = () => {
-        if (pageLoader?.isConnected) return pageLoader;
+    // Loading feedback: a thin top progress bar for every load and navigation, plus a branded
+    // splash that only appears when the first page of a visit takes noticeably long to load.
+    const SPLASH_DELAY_MS = 250;
+    const SPLASH_MIN_MS = 450;
+    const splashStorageKey = 'jacob-splash-seen';
+    let progressBar;
+    let progressTimer;
+    let progressGuard;
+    let progressValue = 0;
+    let splashShownAt = 0;
+    let splashTimer;
+    let pageReady = false;
 
+    const startProgress = () => {
+        if (!progressBar?.isConnected) {
+            progressBar = document.createElement('div');
+            progressBar.className = 'page-progress';
+            progressBar.setAttribute('aria-hidden', 'true');
+            root.append(progressBar);
+        }
+        window.clearInterval(progressTimer);
+        progressBar.classList.remove('is-done');
+        progressValue = 0.08;
+        progressBar.style.transform = `scaleX(${progressValue})`;
+        progressTimer = window.setInterval(() => {
+            progressValue += (0.92 - progressValue) * 0.08;
+            progressBar.style.transform = `scaleX(${progressValue.toFixed(3)})`;
+        }, 200);
+        // If the browser stays on this page (a download or mail link), do not leave the bar hanging.
+        window.clearTimeout(progressGuard);
+        progressGuard = window.setTimeout(finishProgress, 12000);
+    };
+
+    const finishProgress = () => {
+        window.clearInterval(progressTimer);
+        window.clearTimeout(progressGuard);
+        if (!progressBar) return;
+        const bar = progressBar;
+        bar.style.transform = 'scaleX(1)';
+        window.setTimeout(() => bar.classList.add('is-done'), 150);
+        window.setTimeout(() => {
+            bar.remove();
+            if (progressBar === bar) progressBar = null;
+        }, 700);
+    };
+
+    const showSplash = () => {
+        if (pageReady || pageLoader?.isConnected) return;
         pageLoader = document.createElement('div');
         pageLoader.className = 'page-loader';
         pageLoader.setAttribute('role', 'status');
         pageLoader.setAttribute('aria-live', 'polite');
         pageLoader.innerHTML = `
             <div class="page-loader-content">
-                <span class="page-loader-brand">Jacob Estate</span>
-                <p>Getting your page ready</p>
-                <div class="page-loader-progress" aria-hidden="true"><span></span></div>
+                <div class="page-loader-mark">
+                    <svg class="page-loader-ring" viewBox="0 0 100 100" aria-hidden="true">
+                        <circle class="ring-track" cx="50" cy="50" r="46"></circle>
+                        <circle class="ring-arc" cx="50" cy="50" r="46"></circle>
+                    </svg>
+                    <img src="/jacobrent-mark.svg" alt="">
+                </div>
+                <span class="page-loader-brand">Jacob <strong>Estate</strong></span>
+                <span class="loader-sr-only">Loading</span>
             </div>`;
         root.append(pageLoader);
-        return pageLoader;
-    };
-
-    const showLoader = () => {
-        const loader = createLoader();
-        window.clearTimeout(loaderRemovalTimer);
-        loader.classList.remove('is-leaving');
+        splashShownAt = Date.now();
         root.classList.add('is-loading');
         root.setAttribute('aria-busy', 'true');
     };
 
-    const hideLoader = () => {
-        root.classList.remove('is-loading');
-        root.setAttribute('aria-busy', 'false');
-        if (!pageLoader) return;
-        pageLoader.classList.add('is-leaving');
-        loaderRemovalTimer = window.setTimeout(() => {
-            pageLoader?.remove();
-            pageLoader = null;
-        }, 320);
+    const hideSplash = () => {
+        const leave = () => {
+            root.classList.remove('is-loading');
+            root.setAttribute('aria-busy', 'false');
+            if (!pageLoader) return;
+            const loader = pageLoader;
+            loader.classList.add('is-leaving');
+            window.setTimeout(() => {
+                loader.remove();
+                if (pageLoader === loader) pageLoader = null;
+            }, 450);
+        };
+        // Keep the splash up briefly once it has appeared so it never just flickers.
+        const remaining = splashShownAt ? SPLASH_MIN_MS - (Date.now() - splashShownAt) : 0;
+        if (remaining > 0) window.setTimeout(leave, remaining);
+        else leave();
     };
 
-    showLoader();
-    document.addEventListener('DOMContentLoaded', hideLoader, { once: true });
-    window.addEventListener('pageshow', hideLoader);
-    window.addEventListener('beforeunload', showLoader);
+    const onPageReady = () => {
+        pageReady = true;
+        window.clearTimeout(splashTimer);
+        finishProgress();
+        hideSplash();
+    };
+
+    let splashSeen = false;
+    try { splashSeen = sessionStorage.getItem(splashStorageKey) === '1'; } catch (error) { /* storage unavailable */ }
+    try { sessionStorage.setItem(splashStorageKey, '1'); } catch (error) { /* storage unavailable */ }
+
+    startProgress();
+    if (!splashSeen) splashTimer = window.setTimeout(showSplash, SPLASH_DELAY_MS);
+    document.addEventListener('DOMContentLoaded', onPageReady, { once: true });
+    window.addEventListener('load', onPageReady, { once: true });
+    window.addEventListener('pageshow', event => { if (event.persisted) onPageReady(); });
+    window.addEventListener('beforeunload', () => {
+        pageReady = false;
+        startProgress();
+    });
 
     try {
         savedTheme = localStorage.getItem(storageKey);

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jacobestate-shell-v1';
+const CACHE_NAME = 'jacobestate-shell-v2';
 const SHELL_ASSETS = [
     '/offline.html',
     '/manifest.webmanifest',
