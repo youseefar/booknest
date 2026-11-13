@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" class="no-js">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Discover verified homes to rent or buy with Jacob Estate. Explore properties and connect with property owners.">
-  <meta name="theme-color" content="#102720">
+  <meta name="theme-color" content="#142b25">
   <title>Jacob Estate — Find a place to belong</title>
   <link rel="icon" type="image/svg+xml" href="/jacobrent-mark.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,145 +12,132 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/css/landing.css">
+  <link rel="stylesheet" href="/css/home-premium.css">
 </head>
-<body class="landing">
-  <div class="ln-progress" aria-hidden="true"></div>
-  <header class="ln-header">
-    <div class="ln-shell ln-nav-shell">
-      <a class="ln-brand" href="/" aria-label="Jacob Estate home"><img src="/jacobrent-mark.svg" alt=""><span>JACOB <b>ESTATE</b></span></a>
-      <nav class="ln-nav" aria-label="Main navigation">
+<body class="home-premium">
+  <header class="jp-header">
+    <div class="jp-nav-shell">
+      <a class="jp-brand" href="/" aria-label="Jacob Estate home">
+        <img src="/jacobrent-mark.svg" alt="">
+        <span>JACOB <b>ESTATE</b></span>
+      </a>
+      <nav class="jp-nav" aria-label="Main navigation">
         <a href="/properties">Explore homes</a>
         <a href="/properties?type=rent">For rent</a>
         <a href="/properties?type=sale">For sale</a>
       </nav>
-      <div class="ln-actions">
+      <div class="jp-nav-actions">
         <% if (user) { %>
-          <a class="ln-signin" href="/dashboard">Dashboard</a>
-          <a class="ln-cta" href="<%= user.role === 'landlord' ? '/add-property' : '/profile' %>"><%= user.role === 'landlord' ? 'Add a listing' : 'My account' %><i class="bi bi-arrow-up-right"></i></a>
+          <a class="jp-signin" href="/dashboard">Dashboard</a>
+          <a class="jp-nav-cta" href="<%= user.role === 'landlord' ? '/add-property' : '/profile' %>"><%= user.role === 'landlord' ? 'Add a listing' : 'My account' %><i class="bi bi-arrow-up-right"></i></a>
         <% } else { %>
-          <a class="ln-signin" href="/login">Sign in</a>
-          <a class="ln-cta" href="/register/landlord">List your property<i class="bi bi-arrow-up-right"></i></a>
+          <a class="jp-signin" href="/login">Sign in</a>
+          <a class="jp-nav-cta" href="/register/landlord">List your property<i class="bi bi-arrow-up-right"></i></a>
         <% } %>
       </div>
     </div>
   </header>
 
   <main>
-    <section class="ln-hero">
-      <div class="ln-glow" aria-hidden="true"></div>
-      <div class="ln-floaters" aria-hidden="true"><i class="bi bi-key"></i><i class="bi bi-heart-fill"></i><i class="bi bi-house-heart"></i><i class="bi bi-stars"></i><i class="bi bi-door-open"></i><i class="bi bi-balloon-heart"></i></div>
-      <div class="ln-particles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      <div class="ln-shell ln-hero-grid">
-        <div class="ln-hero-copy">
-          <div class="ln-kicker ln-reveal" style="--i:0">A MORE CONSIDERED WAY TO FIND HOME</div>
-          <h1 class="ln-reveal" style="--i:1">Find a place<br>to <span class="ln-word"><span class="ln-word-track"><i>belong.</i><i>begin.</i><i>grow.</i><i>belong.</i></span></span></h1>
-          <p class="ln-lede ln-reveal" style="--i:2">Video tours of verified homes. Clear details. A more confident way to rent or buy your next place.</p>
-          <div class="ln-hero-actions ln-reveal" style="--i:3">
-            <a class="ln-btn ln-btn-light" href="/properties">Explore properties <i class="bi bi-arrow-up-right"></i></a>
-            <a class="ln-link" href="/properties?type=sale">Homes for sale <i class="bi bi-arrow-right"></i></a>
+    <section class="jp-hero">
+      <div class="jp-hero-grain" aria-hidden="true"></div>
+      <div class="jp-hero-inner">
+        <div class="jp-hero-copy">
+          <div class="jp-kicker jp-reveal"><span></span> A MORE CONSIDERED WAY TO FIND HOME</div>
+          <h1 class="jp-reveal jp-delay-1">Find a place<br>to <span class="jp-word-window"><span class="jp-word-track"><i>belong.</i><i>begin.</i><i>grow.</i><i>belong.</i></span></span></h1>
+          <p class="jp-hero-lede jp-reveal jp-delay-2">Thoughtfully presented homes. Clear details. A more confident way to rent or buy your next place.</p>
+          <div class="jp-hero-actions jp-reveal jp-delay-3">
+            <a class="jp-button jp-button-light" href="/properties">Explore properties <i class="bi bi-arrow-up-right"></i></a>
+            <a class="jp-text-link" href="/properties?type=sale">Discover homes for sale <i class="bi bi-arrow-right"></i></a>
           </div>
-          <div class="ln-trust ln-reveal" style="--i:4">
-            <span><i class="bi bi-camera-video"></i> Video tours</span>
-            <span><i class="bi bi-patch-check"></i> Verified listings</span>
-            <span><i class="bi bi-chat-dots"></i> Talk to owners</span>
-          </div>
+          <div class="jp-hero-note jp-reveal jp-delay-3"><i class="bi bi-shield-check"></i><span>Property discovery, made more personal.</span></div>
         </div>
-        <div class="ln-scene ln-reveal" style="--i:2" role="img" aria-label="An interactive three-dimensional house. Drag or swipe to turn it.">
-          <div class="ln-ground"></div><div class="ln-ring ln-ring-1"></div><div class="ln-ring ln-ring-2"></div>
-          <div class="ln-stage" aria-hidden="true">
-            <div class="ln-face ln-front"><div class="ln-window ln-win-1"></div><div class="ln-window ln-win-2"></div><div class="ln-doorway"></div><div class="ln-door"></div></div>
-            <div class="ln-face ln-back"></div>
-            <div class="ln-face ln-side ln-right"></div><div class="ln-face ln-side ln-left"></div>
-            <div class="ln-face ln-gable ln-right"></div><div class="ln-face ln-gable ln-left"></div>
-            <div class="ln-face ln-roof ln-roof-a"></div><div class="ln-face ln-roof ln-roof-b"></div>
-            <div class="ln-face ln-chimney"><i></i><i></i><i></i></div>
-            <div class="ln-orb ln-orb-1"></div><div class="ln-orb ln-orb-2"></div><div class="ln-orb ln-orb-3"></div>
-            <div class="ln-tag ln-tag-1"><i class="bi bi-patch-check"></i><span><b>Verified homes</b><small>Explore with confidence</small></span></div>
-            <div class="ln-tag ln-tag-2"><i class="bi bi-play-circle"></i><span><b>Video tours</b><small>See it before you visit</small></span></div>
+        <div class="jp-hero-art jp-reveal jp-delay-2" aria-label="Animated three-dimensional dream home with a friendly cartoon character">
+          <div class="jp-scene-glow"></div><div class="jp-scene-stars" aria-hidden="true"><i>✦</i><i>✧</i><i>✦</i><i>·</i></div>
+          <div class="jp-scene-orbit jp-scene-orbit-a"></div><div class="jp-scene-orbit jp-scene-orbit-b"></div>
+          <div class="jp-scene-cloud jp-cloud-a"></div><div class="jp-scene-cloud jp-cloud-b"></div>
+          <div class="jp-scene-sun"></div>
+          <div class="jp-3d-house">
+            <div class="jp-house-shadow"></div><div class="jp-house-roof"></div>
+            <div class="jp-house-side"></div><div class="jp-house-front">
+              <div class="jp-house-window jp-window-one"><i></i></div><div class="jp-house-window jp-window-two"><i></i></div>
+              <div class="jp-house-door"><i></i></div><div class="jp-house-step"></div>
+            </div>
+            <div class="jp-house-balcony"></div><div class="jp-house-plant jp-plant-one">✿</div><div class="jp-house-plant jp-plant-two">✿</div>
           </div>
-          <div class="ln-bubble" aria-hidden="true"><span>Hi, welcome home!</span></div>
-          <span class="ln-hint">DRAG TO TURN · TAP THE HOUSE</span>
+          <div class="jp-cartoon-person" aria-hidden="true"><div class="jp-person-shadow"></div><div class="jp-person-head"><i class="jp-person-hair"></i><i class="jp-person-eye"></i><i class="jp-person-eye jp-eye-two"></i><i class="jp-person-smile"></i></div><div class="jp-person-body"><i class="jp-person-arm"></i><i class="jp-person-arm jp-arm-two"></i></div><div class="jp-person-leg jp-leg-one"></div><div class="jp-person-leg jp-leg-two"></div></div>
+          <div class="jp-float-card jp-float-card-top"><span>✦</span><div><b>Find your happy place</b><small>YOUR NEXT CHAPTER STARTS HERE</small></div></div>
+          <div class="jp-float-card jp-float-card-bottom"><i class="bi bi-shield-check"></i><span><b>Verified homes</b><small>Explore with confidence</small></span></div>
+          <div class="jp-art-caption"><span>THE NEXT CHAPTER</span><b>Feels like home.</b></div>
+          <div class="jp-art-index">01 <span>—</span> 03</div>
         </div>
       </div>
+      <div class="jp-hero-bottom"><span>JACOB ESTATE</span><span>FIND YOUR PLACE IN THE WORLD</span><span><i class="bi bi-arrow-down"></i> SCROLL TO EXPLORE</span></div>
     </section>
 
-    <div class="ln-ribbon" aria-hidden="true"><div><span>VERIFIED HOMES</span><span>VIDEO TOURS</span><span>RENT OR BUY</span><span>CONNECT DIRECTLY</span><span>VERIFIED HOMES</span><span>VIDEO TOURS</span><span>RENT OR BUY</span><span>CONNECT DIRECTLY</span></div></div>
-
-    <section class="ln-shell ln-search">
-      <form class="ln-reveal" method="GET" action="/properties">
-        <div class="ln-search-intro"><span>YOUR SEARCH STARTS HERE</span><strong>Where would you like to live?</strong></div>
-        <label class="ln-field" for="ln-search"><i class="bi bi-geo-alt"></i><span><small>LOCATION OR PROPERTY</small><input id="ln-search" type="search" name="q" placeholder="City, neighbourhood or property name"></span></label>
-        <button class="ln-go" type="submit">Find a home <i class="bi bi-arrow-up-right"></i></button>
+    <section class="jp-search-section">
+      <form class="jp-search-panel" method="GET" action="/properties">
+        <div class="jp-search-intro"><span>YOUR SEARCH STARTS HERE</span><strong>Where would you like to live?</strong></div>
+        <label class="jp-search-field" for="jp-search"><i class="bi bi-geo-alt"></i><span><small>LOCATION OR PROPERTY</small><input id="jp-search" type="search" name="q" placeholder="City, neighbourhood or property name"></span></label>
+        <button class="jp-search-submit" type="submit">Find a home <i class="bi bi-arrow-up-right"></i></button>
       </form>
     </section>
 
-    <section class="ln-shell ln-values">
-      <div class="ln-value ln-reveal" style="--i:0"><span>01</span><b>Explore with clarity</b><p>Browse homes with the details that matter, and watch a video tour before you visit.</p><div class="ln-glare"></div></div>
-      <div class="ln-value ln-reveal" style="--i:1"><span>02</span><b>Rent or own</b><p>Discover options for your next chapter, whether you are renting or buying.</p><div class="ln-glare"></div></div>
-      <div class="ln-value ln-reveal" style="--i:2"><span>03</span><b>Connect directly</b><p>Move forward with property owners without the runaround.</p><div class="ln-glare"></div></div>
+    <section class="jp-values">
+      <div class="jp-value"><span>01</span><div><b>Explore with clarity</b><p>Browse homes with the details that matter.</p></div></div>
+      <div class="jp-value"><span>02</span><div><b>Rent or own</b><p>Discover options for your next chapter.</p></div></div>
+      <div class="jp-value"><span>03</span><div><b>Connect directly</b><p>Move forward with property owners.</p></div></div>
     </section>
 
-    <section class="ln-shell ln-featured" id="featured">
-      <div class="ln-heading ln-reveal">
-        <div><span>A PLACE TO START</span><h2>Featured <em>properties.</em></h2><p>Explore a selection of homes currently listed on Jacob Estate.</p></div>
-        <a class="ln-all" href="/properties">View all properties <i class="bi bi-arrow-up-right"></i></a>
+    <section class="jp-featured" id="featured">
+      <div class="jp-section-heading jp-reveal">
+        <div><span class="jp-section-kicker">A PLACE TO START</span><h2>Featured <em>properties.</em></h2><p>Explore a selection of homes currently listed on Jacob Estate.</p></div>
+        <a class="jp-view-all" href="/properties">View all properties <i class="bi bi-arrow-up-right"></i></a>
       </div>
-      <div class="ln-grid">
+      <div class="jp-property-grid">
         <% if (properties && properties.length) { %>
           <% properties.forEach((property, index) => { %>
-            <article class="ln-card ln-reveal" style="--i:<%= index % 3 %>">
-              <a class="ln-media" href="/property/<%= property._id %>" aria-label="View <%= property.title %>">
+            <article class="jp-property-card jp-reveal" style="--jp-card-index:<%= index %>">
+              <a class="jp-property-media" href="/property/<%= property._id %>" aria-label="View <%= property.title %>">
                 <% if (property.videoUrl) { %>
                   <video class="property-card-video" data-lazy-video data-video-preview preload="none" muted loop playsinline aria-hidden="true"><source src="<%= property.videoUrl %>" type="video/<%= property.videoFormat || 'mp4' %>"></video>
-                  <span class="ln-media-tag"><i class="bi bi-play-circle"></i> VIDEO TOUR</span>
+                  <span class="jp-media-tag"><i class="bi bi-play-circle"></i> VIDEO TOUR</span>
                 <% } else { %>
-                  <div class="ln-placeholder"><i class="bi bi-buildings"></i><span>PROPERTY PREVIEW</span></div>
+                  <div class="jp-media-placeholder"><i class="bi bi-buildings"></i><span>PROPERTY PREVIEW</span></div>
                 <% } %>
-                <span class="ln-media-arrow"><i class="bi bi-arrow-up-right"></i></span>
+                <span class="jp-media-arrow"><i class="bi bi-arrow-up-right"></i></span>
               </a>
-              <div class="ln-info">
-                <div class="ln-topline"><span><%= property.listingType === 'sale' ? 'FOR SALE' : 'FOR RENT' %></span><% if (property.averageRating) { %><span><i class="bi bi-star-fill"></i> <%= property.averageRating.toFixed(1) %></span><% } %></div>
+              <div class="jp-property-info">
+                <div class="jp-property-topline"><span><%= property.listingType === 'sale' ? 'FOR SALE' : 'FOR RENT' %></span><% if (property.averageRating) { %><span><i class="bi bi-star-fill"></i> <%= property.averageRating.toFixed(1) %></span><% } %></div>
                 <h3><a href="/property/<%= property._id %>"><%= property.title %></a></h3>
-                <p class="ln-loc"><i class="bi bi-geo-alt"></i> <%= property.location %></p>
-                <div class="ln-bottom"><strong>₦<%= property.price.toLocaleString() %><% if (property.listingType === 'rent') { %><small> / month</small><% } %></strong><a href="/property/<%= property._id %>">View details <i class="bi bi-arrow-right"></i></a></div>
+                <p class="jp-property-location"><i class="bi bi-geo-alt"></i> <%= property.location %></p>
+                <div class="jp-property-bottom"><strong>₦<%= property.price.toLocaleString() %><% if (property.listingType === 'rent') { %><small> / month</small><% } %></strong><a href="/property/<%= property._id %>">View details <i class="bi bi-arrow-right"></i></a></div>
               </div>
-              <div class="ln-glare"></div>
             </article>
           <% }); %>
         <% } else { %>
-          <div class="ln-empty"><i class="bi bi-house-heart"></i><h3>Your next home is on its way.</h3><p>There are no featured properties just yet. Check back soon or explore all available listings.</p><a href="/properties">Browse properties <i class="bi bi-arrow-right"></i></a></div>
+          <div class="jp-empty-state"><i class="bi bi-house-heart"></i><h3>Your next home is on its way.</h3><p>There are no featured properties just yet. Check back soon or explore all available listings.</p><a href="/properties">Browse properties <i class="bi bi-arrow-right"></i></a></div>
         <% } %>
       </div>
     </section>
 
-    <section class="ln-shell ln-owner ln-reveal">
-      <div>
-        <span>FOR PROPERTY OWNERS</span>
-        <h2>Good homes deserve<br><em>to be discovered.</em></h2>
-        <p>Present your property with a video tour and reach people looking for a place to call their own.</p>
-        <% if (user && user.role === 'landlord') { %>
-          <a class="ln-btn" href="/add-property">Add a property <i class="bi bi-arrow-up-right"></i></a>
-        <% } else { %>
-          <a class="ln-btn" href="/register/landlord">List your property <i class="bi bi-arrow-up-right"></i></a>
-        <% } %>
-      </div>
-      <div class="ln-cube-wrap" aria-hidden="true"><div class="ln-cube"><i>J</i><i>J</i><i>J</i><i>J</i><i>J</i><i>J</i></div></div>
+    <section class="jp-owner-cta">
+      <div><span class="jp-section-kicker">FOR PROPERTY OWNERS</span><h2>Good homes deserve<br><em>to be discovered.</em></h2><p>Present your property to people looking for a place to call their own.</p></div>
+      <% if (user && user.role === 'landlord') { %>
+        <a class="jp-button jp-button-dark" href="/add-property">Add a property <i class="bi bi-arrow-up-right"></i></a>
+      <% } else { %>
+        <a class="jp-button jp-button-dark" href="/register/landlord">List your property <i class="bi bi-arrow-up-right"></i></a>
+      <% } %>
+      <div class="jp-owner-mark" aria-hidden="true">J<span>.</span></div>
     </section>
   </main>
 
-  <footer class="ln-footer">
-    <div class="ln-shell">
-      <div class="ln-footer-main">
-        <a class="ln-brand" href="/"><img src="/jacobrent-mark.svg" alt=""><span>JACOB <b>ESTATE</b></span></a>
-        <p>A considered way to find your next place.</p>
-        <nav aria-label="Footer navigation"><a href="/properties">Explore homes</a><a href="/terms">Terms of Service</a><a href="/privacy-policy">Privacy Policy</a><% if (!user) { %><a href="/login">Sign in</a><% } else { %><a href="/dashboard">Dashboard</a><% } %></nav>
-      </div>
-      <div class="ln-footer-bottom"><span>© <%= new Date().getFullYear() %> Jacob Estate. All rights reserved.</span><span>MADE FOR THE NEXT CHAPTER.</span></div>
-    </div>
+  <footer class="jp-footer">
+    <div class="jp-footer-main"><a class="jp-brand jp-footer-brand" href="/"><img src="/jacobrent-mark.svg" alt=""><span>JACOB <b>ESTATE</b></span></a><p>A considered way to find your next place.</p><nav aria-label="Footer navigation"><a href="/properties">Explore homes</a><a href="/terms">Terms of Service</a><a href="/privacy-policy">Privacy Policy</a><% if (!user) { %><a href="/login">Sign in</a><% } else { %><a href="/dashboard">Dashboard</a><% } %></nav></div>
+    <div class="jp-footer-bottom"><span>© <%= new Date().getFullYear() %> Jacob Estate. All rights reserved.</span><span>MADE FOR THE NEXT CHAPTER.</span></div>
   </footer>
   <script src="/js/wishlist.js"></script>
   <script src="/js/lazy-videos.js" defer></script>
-  <script src="/js/landing.js" defer></script>
+  <script src="/js/home-motion.js" defer></script>
 </body>
 </html>
