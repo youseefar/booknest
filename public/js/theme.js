@@ -224,7 +224,7 @@
     // splash (logo in a disc with orbiting rings) on the first page of each visit.
     const SPLASH_MIN_MS = 1100;
     const SPLASH_MAX_MS = 8000;
-    const splashStorageKey = 'jacob-splash-seen';
+    const splashStorageKey = 'jacob-splash-seen-v2';
     let progressBar;
     let progressTimer;
     let progressGuard;
@@ -331,9 +331,15 @@
         hideSplash();
     };
 
+    // Show the splash on the first page of a visit, and again whenever the page is refreshed
+    // (or opened with ?splash=1) so it can always be previewed.
     let splashSeen = false;
     try { splashSeen = sessionStorage.getItem(splashStorageKey) === '1'; } catch (error) { /* storage unavailable */ }
     try { sessionStorage.setItem(splashStorageKey, '1'); } catch (error) { /* storage unavailable */ }
+    try {
+        const navigation = performance.getEntriesByType('navigation')[0];
+        if (navigation?.type === 'reload' || /[?&]splash=1(&|$)/.test(window.location.search)) splashSeen = false;
+    } catch (error) { /* navigation timing unavailable */ }
 
     startProgress();
     if (!splashSeen) showSplash();
