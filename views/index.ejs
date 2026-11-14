@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JacobRent — Find Your Next Home</title>
+    <title>Jacob Estate — Homes to rent and buy</title>
     <link rel="icon" type="image/svg+xml" href="/jacobrent-mark.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -16,7 +16,7 @@
 <body class="bg-soft jacobrent-home">
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top shadow-sm">
         <div class="container">
-            <a class="navbar-brand brand fw-bold" href="/" aria-label="JacobRent home"><img class="brand-logo" src="/jacobrent-mark.svg" alt="JacobRent J logo">JacobRent</a>
+            <a class="navbar-brand brand fw-bold" href="/" aria-label="Jacob Estate home"><img class="brand-logo" src="/jacobrent-mark.svg" alt="Jacob Estate mark">Jacob Estate</a>
             <div class="d-flex gap-3 align-items-center">
                 <a class="nav-link text-dark" href="/properties"><i class="bi bi-buildings me-1"></i>Browse homes</a>
                 <% if (user) { %>
@@ -43,14 +43,14 @@
             </form>
 
             <div class="airbnb-hero-copy">
-                <span class="eyebrow text-uppercase">JacobRent rentals</span>
-                <div class="home-wordmark" aria-label="JacobRent">
+                <span class="eyebrow text-uppercase">Jacob Estate properties</span>
+                <div class="home-wordmark" aria-label="Jacob Estate">
                     <span class="home-wordmark-bird home-wordmark-bird-one" aria-hidden="true"><i class="bi bi-twitter"></i></span>
                     <span class="home-wordmark-bird home-wordmark-bird-two" aria-hidden="true"><i class="bi bi-twitter"></i></span>
-                    <h1><span>Jacob</span><span class="wordmark-housing">Rent</span></h1>
+                    <h1><span>Jacob</span><span class="wordmark-housing">Estate</span></h1>
                 </div>
                 <h2 class="home-hero-heading">A better place to call home.</h2>
-                <p>Discover clean, verified student-friendly homes near campus, from private rooms to full apartments with modern essentials.</p>
+                <p>Find your next home with Jacob Estate. Explore verified properties for rent or sale, and connect directly with property owners.</p>
                 <div class="airbnb-cta">
                     <a href="/properties" class="btn btn-primary btn-lg"><i class="bi bi-search me-2"></i>Explore homes</a>
                     <% if (!user) { %>
@@ -58,16 +58,17 @@
                     <% } else if (user.role === 'landlord') { %>
                         <a href="/add-property" class="btn btn-outline-dark btn-lg">Add a listing</a>
                     <% } else { %>
-                        <a href="/properties" class="btn btn-outline-dark btn-lg">See all rentals</a>
+                        <a href="/properties" class="btn btn-outline-dark btn-lg">Browse homes for rent or sale</a>
                     <% } %>
+                    <a href="/properties?type=sale" class="btn btn-outline-light btn-lg">Browse homes for sale</a>
                 </div>
             </div>
         </section>
 
         <section class="airbnb-trust mt-4">
             <div class="trust-item"><i class="bi bi-shield-check"></i><span>Verified homes</span></div>
-            <div class="trust-item"><i class="bi bi-map"></i><span>Near campus</span></div>
-            <div class="trust-item"><i class="bi bi-star-fill"></i><span>Top-rated landlords</span></div>
+            <div class="trust-item"><i class="bi bi-house-check"></i><span>Rent or buy</span></div>
+            <div class="trust-item"><i class="bi bi-star-fill"></i><span>Quality properties</span></div>
             <div class="trust-item"><i class="bi bi-clock-history"></i><span>Fast response</span></div>
         </section>
 
@@ -75,8 +76,8 @@
             <div class="section-title-row">
                 <div>
                     <span class="eyebrow text-uppercase">Featured homes</span>
-                    <h2>Popular places for students</h2>
-                    <p class="section-subtitle">Fresh listings, comfortable spaces, and a better way to settle in.</p>
+                    <h2>Featured properties</h2>
+                    <p class="section-subtitle">Discover homes available to rent and properties available to buy.</p>
                 </div>
                 <a href="/properties" class="show-all-link">See all homes <i class="bi bi-arrow-right"></i></a>
             </div>
@@ -90,7 +91,7 @@
                                     <div class="airbnb-image-wrap">
                                         <% if (property.videoUrl) { %>
                                             <video class="property-card-video" data-lazy-video data-video-preview preload="none" muted loop playsinline aria-hidden="true">
-                                                <source src="<%= property.videoUrl %>" type="video/<%= property.videoFormat || 'mp4' %>">
+                                                <source src="<%= property.videoUrl %>#t=0.1" type="video/<%= property.videoFormat || 'mp4' %>">
                                             </video>
                                             <span class="property-video-label"><i class="bi bi-play-circle-fill me-1"></i>Video tour</span>
                                         <% } else { %>
@@ -114,12 +115,10 @@
                                                 <p class="location-line"><i class="bi bi-geo-alt-fill me-1"></i><%= property.location %></p>
                                                 <% if (property.averageRating) { %><p class="small text-warning-emphasis mb-0"><i class="bi bi-star-fill me-1"></i><strong><%= property.averageRating.toFixed(1) %></strong><span class="text-muted"> · <%= property.reviews.length %> review<%= property.reviews.length === 1 ? '' : 's' %></span></p><% } %>
                                             </div>
-                                            <div class="price-tag">₦<%= property.price.toLocaleString() %><span>/month</span></div>
+                                            <div class="price-tag">₦<%= property.price.toLocaleString() %><% if (property.listingType === 'rent') { %><span>/month</span><% } %></div>
                                         </div>
                                         <div class="airbnb-meta">
-                                            <span><i class="bi bi-bed"></i> 2 beds</span>
-                                            <span><i class="bi bi-bath"></i> 2 baths</span>
-                                            <span><i class="bi bi-house"></i> Private</span>
+                                            <span><i class="bi bi-house"></i> <%= property.listingType === 'sale' ? 'For sale' : 'For rent' %></span>
                                         </div>
                                     </div>
                                 </article>
@@ -129,8 +128,8 @@
                 <% } else { %>
                     <div class="col-12">
                         <div class="empty-state large-empty">
-                            <strong>No rental homes are available yet.</strong>
-                            <p>New student-friendly listings will appear here as soon as landlords add them.</p>
+                            <strong>No properties are available yet.</strong>
+                            <p>New verified properties will appear here as soon as owners add them.</p>
                         </div>
                     </div>
                 <% } %>
@@ -143,10 +142,10 @@
 
     <footer class="home-footer">
         <div class="container home-footer-inner">
-            <a class="home-footer-brand" href="/" aria-label="JacobRent home">
-                <img class="brand-logo" src="/jacobrent-mark.svg" alt="JacobRent J logo"><span>JacobRent</span>
+            <a class="home-footer-brand" href="/" aria-label="Jacob Estate home">
+                <img class="brand-logo" src="/jacobrent-mark.svg" alt="Jacob Estate mark"><span>Jacob Estate</span>
             </a>
-            <p>Find a place to settle in, study, and feel at home.</p>
+            <p>Find your next home to rent or buy.</p>
             <nav class="home-footer-links" aria-label="Footer navigation">
                 <a href="/properties">Browse homes</a>
                 <% if (!user) { %>
@@ -158,7 +157,7 @@
                 <a href="/terms">Terms of Service</a>
                 <a href="/privacy-policy">Privacy Policy</a>
             </nav>
-            <span class="home-footer-copy">&copy; <%= new Date().getFullYear() %> JacobRent</span>
+            <span class="home-footer-copy">&copy; <%= new Date().getFullYear() %> Jacob Estate</span>
         </div>
     </footer>
 </body>
