@@ -31,7 +31,7 @@ html.is-loading body {
     opacity: 0;
 }
 
-/* Branded splash, only shown when the first page of a visit is slow to load */
+/* Branded splash: the logo in a disc with two orbiting rings. Shown on the first page of a visit. */
 .page-loader {
     position: fixed;
     z-index: 10000;
@@ -41,9 +41,11 @@ html.is-loading body {
     min-height: 100vh;
     min-height: 100svh;
     overflow: hidden;
-    background: var(--theme-page, #f6f4ec);
+    background:
+        radial-gradient(circle at 50% 44%, rgba(35, 109, 96, 0.1), transparent 55%),
+        var(--theme-page, #f6f4ec);
     opacity: 1;
-    transition: opacity 0.4s ease, visibility 0.4s ease;
+    transition: opacity 0.45s ease, visibility 0.45s ease;
 }
 
 .page-loader.is-leaving {
@@ -55,83 +57,112 @@ html.is-loading body {
 .page-loader-content {
     display: grid;
     justify-items: center;
-    gap: 1.25rem;
+    gap: 1.6rem;
     padding: 1.5rem 1rem;
     text-align: center;
 }
 
 .page-loader.is-leaving .page-loader-content {
-    transform: scale(0.96);
-    transition: transform 0.4s ease;
+    transform: scale(1.04);
+    transition: transform 0.45s ease;
 }
 
 .page-loader-mark {
     position: relative;
     display: grid;
     place-items: center;
-    width: 5.5rem;
-    height: 5.5rem;
+    width: 8.5rem;
+    height: 8.5rem;
 }
 
-.page-loader-mark img {
-    width: 2.9rem;
-    height: 2.9rem;
-    animation: loader-pulse 2s ease-in-out infinite;
+.loader-halo {
+    position: absolute;
+    inset: 1.1rem;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(198, 161, 74, 0.35), transparent 70%);
+    animation: loader-halo 2.4s ease-in-out infinite;
 }
 
-.page-loader-ring {
+.loader-ring {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    animation: loader-spin 1.2s linear infinite;
 }
 
-.page-loader-ring circle {
+.loader-ring circle {
     fill: none;
-    stroke-width: 3;
-}
-
-.page-loader-ring .ring-track {
-    stroke: rgba(35, 109, 96, 0.16);
-}
-
-.page-loader-ring .ring-arc {
-    stroke: #236d60;
     stroke-linecap: round;
-    stroke-dasharray: 90 200;
 }
+
+.loader-ring .ring-track {
+    stroke: rgba(23, 53, 92, 0.1);
+    stroke-width: 1.5;
+}
+
+.loader-ring-outer { animation: loader-spin 1.6s linear infinite; }
+.loader-ring-outer .ring-arc { stroke: #c6a14a; stroke-width: 3; stroke-dasharray: 70 230; }
+
+.loader-ring-inner { inset: 0.9rem; width: calc(100% - 1.8rem); height: calc(100% - 1.8rem); animation: loader-spin 2.6s linear infinite reverse; }
+.loader-ring-inner .ring-arc { stroke: #17355c; stroke-width: 2.5; stroke-dasharray: 45 230; opacity: 0.85; }
+
+.loader-disc {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 5.4rem;
+    height: 5.4rem;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 10px 28px rgba(23, 53, 92, 0.18), inset 0 0 0 1px rgba(23, 53, 92, 0.06);
+}
+
+.loader-logo {
+    width: 3.5rem;
+    height: 3.5rem;
+    overflow: visible;
+}
+
+.loader-logo .draw {
+    fill: none;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    animation: loader-draw 1.1s cubic-bezier(0.5, 0, 0.2, 1) both;
+}
+
+.loader-logo .draw-navy { stroke: #17355c; stroke-width: 8; }
+.loader-logo .draw-gold { stroke: #c6a14a; stroke-width: 7; animation-delay: 0.25s; }
+.loader-logo .draw-base { stroke: #c6a14a; stroke-width: 4; animation-delay: 0.6s; }
+.loader-logo .fill-navy { fill: #17355c; transform-origin: 50% 60%; animation: loader-pop 0.7s ease 0.35s both; }
+.loader-logo .fill-gold { fill: #c6a14a; animation: loader-pop 0.7s ease 0.5s both; }
 
 .page-loader-brand {
     color: var(--theme-text, #173849);
-    font-size: 1.15rem;
+    font-size: 1.3rem;
     font-weight: 800;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 
 .page-loader-brand strong {
-    color: #236d60;
+    color: #b08a34;
+    font-weight: 800;
 }
 
-html[data-theme="dark"] .page-loader-brand strong {
-    color: #6fcfb6;
+.page-loader-tagline {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--theme-muted, #6b7a80);
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
 }
 
-html[data-theme="dark"] .page-loader-mark img {
-    width: 3.1rem;
-    height: 3.1rem;
-    padding: 0.45rem;
-    border-radius: 50%;
-    background: #e9f1ee;
-}
-
-html[data-theme="dark"] .page-loader-ring .ring-arc {
-    stroke: #6fcfb6;
-}
-
-html[data-theme="dark"] .page-loader-ring .ring-track {
-    stroke: rgba(194, 218, 210, 0.16);
-}
+html[data-theme="dark"] .loader-ring .ring-track { stroke: rgba(255, 255, 255, 0.12); }
+html[data-theme="dark"] .loader-ring-inner .ring-arc { stroke: #8fb4e8; }
+html[data-theme="dark"] .page-loader-brand strong { color: #e0bd68; }
+html[data-theme="dark"] .loader-disc { box-shadow: 0 10px 34px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08); }
 
 .page-loader .loader-sr-only {
     position: absolute;
@@ -146,8 +177,18 @@ html[data-theme="dark"] .page-loader-ring .ring-track {
     to { transform: rotate(360deg); }
 }
 
-@keyframes loader-pulse {
-    50% { transform: scale(0.9); opacity: 0.8; }
+@keyframes loader-draw {
+    from { stroke-dashoffset: 1; }
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes loader-pop {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes loader-halo {
+    50% { transform: scale(1.12); opacity: 0.6; }
 }
 
 @media (prefers-reduced-motion: reduce) {

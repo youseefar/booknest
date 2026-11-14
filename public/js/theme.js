@@ -221,9 +221,9 @@
     }
 
     // Loading feedback: a thin top progress bar for every load and navigation, plus a branded
-    // splash that only appears when the first page of a visit takes noticeably long to load.
-    const SPLASH_DELAY_MS = 250;
-    const SPLASH_MIN_MS = 450;
+    // splash (logo in a disc with orbiting rings) on the first page of each visit.
+    const SPLASH_MIN_MS = 1100;
+    const SPLASH_MAX_MS = 8000;
     const splashStorageKey = 'jacob-splash-seen';
     let progressBar;
     let progressTimer;
@@ -274,18 +274,34 @@
         pageLoader.setAttribute('aria-live', 'polite');
         pageLoader.innerHTML = `
             <div class="page-loader-content">
-                <div class="page-loader-mark">
-                    <svg class="page-loader-ring" viewBox="0 0 100 100" aria-hidden="true">
-                        <circle class="ring-track" cx="50" cy="50" r="46"></circle>
-                        <circle class="ring-arc" cx="50" cy="50" r="46"></circle>
+                <div class="page-loader-mark" aria-hidden="true">
+                    <span class="loader-halo"></span>
+                    <svg class="loader-ring loader-ring-outer" viewBox="0 0 100 100">
+                        <circle class="ring-track" cx="50" cy="50" r="47"></circle>
+                        <circle class="ring-arc" cx="50" cy="50" r="47" pathLength="300"></circle>
                     </svg>
-                    <img src="/jacobrent-mark.svg" alt="">
+                    <svg class="loader-ring loader-ring-inner" viewBox="0 0 100 100">
+                        <circle class="ring-arc" cx="50" cy="50" r="47" pathLength="300"></circle>
+                    </svg>
+                    <div class="loader-disc">
+                        <svg class="loader-logo" viewBox="0 0 160 160">
+                            <path class="draw draw-navy" pathLength="1" d="M43 20C12 39 2 76 11 109"/>
+                            <path class="draw draw-gold" pathLength="1" d="M116 22c34 22 44 61 28 93"/>
+                            <path class="fill-navy" d="M50 40h58v15H66v45c0 15-10 24-26 24-13 0-23-6-29-17l13-10c4 7 9 10 16 10 7 0 10-4 10-11V40z"/>
+                            <path class="fill-gold" d="M51 28h57v10H51z"/>
+                            <path class="draw draw-base" pathLength="1" d="M26 126h96"/>
+                        </svg>
+                    </div>
                 </div>
-                <span class="page-loader-brand">Jacob <strong>Estate</strong></span>
+                <div>
+                    <span class="page-loader-brand">Jacob <strong>Estate</strong></span>
+                    <span class="page-loader-tagline">Homes to rent and buy</span>
+                </div>
                 <span class="loader-sr-only">Loading</span>
             </div>`;
         root.append(pageLoader);
         splashShownAt = Date.now();
+        window.setTimeout(() => { pageReady = true; hideSplash(); }, SPLASH_MAX_MS);
         root.classList.add('is-loading');
         root.setAttribute('aria-busy', 'true');
     };
@@ -320,7 +336,7 @@
     try { sessionStorage.setItem(splashStorageKey, '1'); } catch (error) { /* storage unavailable */ }
 
     startProgress();
-    if (!splashSeen) splashTimer = window.setTimeout(showSplash, SPLASH_DELAY_MS);
+    if (!splashSeen) showSplash();
     document.addEventListener('DOMContentLoaded', onPageReady, { once: true });
     window.addEventListener('load', onPageReady, { once: true });
     window.addEventListener('pageshow', event => { if (event.persisted) onPageReady(); });
