@@ -643,3 +643,11 @@ body.jacobrent-home .airbnb-placeholder { height: 100%; min-height: 0; }
     body.jacobrent-home .airbnb-hero-copy { padding: 0.75rem 0.25rem 0.25rem; }
     body.jacobrent-home .airbnb-cta .btn { width: 100%; }
 }
+
+/* Footer logo: the shared styles turn it white on a white tile, so show the real logo on a white tile */
+body.jacobrent-home .home-footer-brand .brand-logo {
+    filter: none;
+    padding: 3px;
+    border-radius: 10px;
+    background-color: #fff;
+}
