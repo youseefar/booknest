@@ -1,0 +1,633 @@
+/* JacobRent landing page (restored from Oct 29). Scoped to body.jacobrent-home so it only affects the home page. */
+body.jacobrent-home .airbnb-hero {
+    position: relative;
+    min-height: 570px;
+    padding: 2.5rem 2rem 2rem;
+    border-radius: 32px;
+    background-image:
+        linear-gradient(90deg, rgba(10, 31, 42, 0.78) 0%, rgba(10, 31, 42, 0.53) 48%, rgba(10, 31, 42, 0.08) 100%),
+        url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2200&q=85');
+    background-position: center, center 56%;
+    background-size: cover;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    box-shadow: 0 24px 50px rgba(17, 24, 39, 0.08);
+    overflow: hidden;
+}
+
+body.jacobrent-home .airbnb-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 85% 20%, rgba(255, 189, 167, 0.34), transparent 22%);
+}
+
+body.jacobrent-home .airbnb-hero-copy,
+body.jacobrent-home .airbnb-search-box,
+body.jacobrent-home .airbnb-trust,
+body.jacobrent-home .showcase-section {
+    position: relative;
+    z-index: 1;
+}
+
+body.jacobrent-home .airbnb-hero-copy {
+    max-width: 720px;
+    padding: 1rem 1rem 0.5rem;
+}
+
+body.jacobrent-home .home-wordmark {
+    position: relative;
+    width: fit-content;
+    margin: 0.65rem 0 1.5rem;
+}
+
+body.jacobrent-home .home-wordmark h1 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.2em;
+    margin: 0;
+    font-size: 4.8rem;
+    line-height: 0.95;
+    font-weight: 850;
+    letter-spacing: 0;
+    white-space: nowrap;
+    color: #fff;
+    text-shadow: 0 4px 22px rgba(0, 0, 0, 0.26);
+}
+
+body.jacobrent-home .home-wordmark .wordmark-housing {
+    color: #ffb38f;
+}
+
+body.jacobrent-home .home-wordmark-bird {
+    position: absolute;
+    z-index: 2;
+    color: #fff1ce;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+
+body.jacobrent-home .home-wordmark-bird-one {
+    top: -1.1rem;
+    left: 40%;
+    font-size: 1.35rem;
+    animation: bird-drift 4.5s ease-in-out infinite;
+}
+
+body.jacobrent-home .home-wordmark-bird-two {
+    top: 0.2rem;
+    right: 8%;
+    font-size: 0.95rem;
+    transform: rotate(-18deg);
+}
+
+@keyframes bird-drift {
+    0%, 100% { transform: translate(0, 0) rotate(-8deg); }
+    50% { transform: translate(10px, -7px) rotate(4deg); }
+}
+
+body.jacobrent-home .airbnb-hero-copy .home-hero-heading {
+    max-width: 620px;
+    margin: 0 0 0.65rem;
+    font-size: 2.4rem;
+    line-height: 1.05;
+    font-weight: 750;
+    color: #fff;
+}
+
+body.jacobrent-home .airbnb-hero-copy p {
+    max-width: 680px;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.84);
+}
+
+body.jacobrent-home .airbnb-hero-copy .eyebrow {
+    color: #ffd5c8;
+}
+
+body.jacobrent-home .airbnb-cta {
+    margin-top: 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+body.jacobrent-home .airbnb-search-box {
+    max-width: 900px;
+    margin: 0 auto 1.5rem;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 22px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.09);
+    padding: 1rem 1.2rem;
+}
+
+body.jacobrent-home .airbnb-search-box label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.2rem;
+}
+
+body.jacobrent-home .airbnb-hero .btn-outline-dark {
+    border-color: rgba(255, 255, 255, 0.78);
+    color: #fff;
+}
+
+body.jacobrent-home .airbnb-hero .btn-outline-dark:hover {
+    border-color: #fff;
+    background: #fff;
+    color: #173849;
+}
+
+body.jacobrent-home .airbnb-trust {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+body.jacobrent-home .trust-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    border-radius: 20px;
+    padding: 1rem 1.2rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+body.jacobrent-home .trust-item i {
+    width: 36px;
+    height: 36px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 12px;
+    background: #fee2e2;
+    color: #e11d48;
+}
+
+body.jacobrent-home .showcase-section {
+    margin-top: 4.5rem;
+    padding-bottom: 2rem;
+}
+
+body.jacobrent-home .home-footer {
+    margin-top: 2rem;
+    border-top: 1px solid rgba(23, 56, 73, 0.12);
+    background: #173849;
+    color: rgba(255, 255, 255, 0.76);
+}
+
+body.jacobrent-home .home-footer-inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0.9rem 2rem;
+    padding-top: 1.8rem;
+    padding-bottom: 1.8rem;
+}
+
+body.jacobrent-home .home-footer-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: fit-content;
+    color: #fff;
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
+body.jacobrent-home .home-footer-brand .brand-mark {
+    margin: 0;
+    background: #df6a5d;
+}
+
+body.jacobrent-home .home-footer-brand strong {
+    color: #ffb38f;
+}
+
+body.jacobrent-home .home-footer-inner > p {
+    grid-column: 1;
+    margin: -0.5rem 0 0 2.7rem;
+    font-size: 0.88rem;
+}
+
+body.jacobrent-home .home-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 1.25rem;
+    grid-column: 2;
+    grid-row: 1 / span 2;
+}
+
+body.jacobrent-home .home-footer-links a {
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 650;
+}
+
+body.jacobrent-home .home-footer-links a:hover {
+    color: #ffb38f;
+}
+
+body.jacobrent-home .home-footer-copy {
+    grid-column: 1 / -1;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+    font-size: 0.78rem;
+}
+
+body.jacobrent-home .section-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+body.jacobrent-home .section-title-row h2 {
+    margin: 0;
+    color: #111827;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+}
+
+body.jacobrent-home .section-subtitle {
+    margin: 0.45rem 0 0;
+    color: #718087;
+}
+
+body.jacobrent-home .show-all-link {
+    font-weight: 700;
+    color: #111827;
+}
+
+body.jacobrent-home .property-link-card {
+    display: block;
+    color: inherit;
+}
+
+body.jacobrent-home .airbnb-card {
+    background: #fff;
+    border: 1px solid rgba(17, 24, 39, 0.08);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 18px 28px rgba(15, 23, 42, 0.06);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+body.jacobrent-home .airbnb-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 24px 34px rgba(15, 23, 42, 0.1);
+}
+
+body.jacobrent-home .airbnb-image-wrap {
+    position: relative;
+    height: 260px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #dfdfe7, #f3f4f6);
+}
+
+body.jacobrent-home .airbnb-image-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.45s ease;
+}
+
+body.jacobrent-home .property-link-card:hover .airbnb-image-wrap img {
+    transform: scale(1.045);
+}
+
+body.jacobrent-home .airbnb-placeholder {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    color: #16a34a;
+    font-size: 4rem;
+}
+
+body.jacobrent-home .sample-home-badge {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 1;
+    padding: 0.38rem 0.65rem;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 999px;
+    background: rgba(23, 56, 73, 0.82);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    backdrop-filter: blur(8px);
+}
+
+body.jacobrent-home .airbnb-card-body {
+    padding: 1rem 1rem 1.1rem;
+}
+
+body.jacobrent-home .airbnb-card-body h3 {
+    margin: 0;
+    font-size: 1.12rem;
+    color: #111827;
+    letter-spacing: -0.03em;
+}
+
+body.jacobrent-home .location-line {
+    margin: 0.2rem 0 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+body.jacobrent-home .price-tag {
+    color: #111827;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+body.jacobrent-home .price-tag span {
+    font-weight: 500;
+    color: #6b7280;
+    font-size: 0.8rem;
+}
+
+body.jacobrent-home .airbnb-meta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+    color: #4b5563;
+    font-size: 0.82rem;
+}
+
+html[data-theme="dark"] body.jacobrent-home .navbar,
+html[data-theme="dark"] body.jacobrent-home .navbar.bg-white,
+html[data-theme="dark"] body.jacobrent-home .bg-white,
+html[data-theme="dark"] body.jacobrent-home .auth-card,
+html[data-theme="dark"] body.jacobrent-home .profile-panel,
+html[data-theme="dark"] body.jacobrent-home .airbnb-search-box,
+html[data-theme="dark"] body.jacobrent-home .trust-item,
+html[data-theme="dark"] body.jacobrent-home .airbnb-card,
+html[data-theme="dark"] body.jacobrent-home .property-card,
+html[data-theme="dark"] body.jacobrent-home .glass-card,
+html[data-theme="dark"] body.jacobrent-home .inquiry-card,
+html[data-theme="dark"] body.jacobrent-home .inquiry-empty,
+html[data-theme="dark"] body.jacobrent-home .dashboard-stat-card,
+html[data-theme="dark"] body.jacobrent-home .admin-stat-card,
+html[data-theme="dark"] body.jacobrent-home .admin-user-row,
+html[data-theme="dark"] body.jacobrent-home .airbnb-list-row,
+html[data-theme="dark"] body.jacobrent-home .dashboard-empty,
+html[data-theme="dark"] body.jacobrent-home .large-empty,
+html[data-theme="dark"] body.jacobrent-home .empty-state,
+html[data-theme="dark"] body.jacobrent-home .airbnb-placeholder {
+    background-color: var(--theme-surface) !important;
+    border-color: var(--theme-border) !important;
+    color: var(--theme-text);
+}
+
+html[data-theme="dark"] body.jacobrent-home .navbar .nav-link,
+html[data-theme="dark"] body.jacobrent-home .navbar .brand,
+html[data-theme="dark"] body.jacobrent-home .navbar .text-dark,
+html[data-theme="dark"] body.jacobrent-home .text-dark,
+html[data-theme="dark"] body.jacobrent-home .card-title,
+html[data-theme="dark"] body.jacobrent-home .section-title-row h2,
+html[data-theme="dark"] body.jacobrent-home .profile-panel-heading h2,
+html[data-theme="dark"] body.jacobrent-home .inquiry-toolbar h2,
+html[data-theme="dark"] body.jacobrent-home .admin-stat-card strong,
+html[data-theme="dark"] body.jacobrent-home .admin-user-main strong,
+html[data-theme="dark"] body.jacobrent-home .inquiry-empty strong {
+    color: var(--theme-text) !important;
+}
+
+html[data-theme="dark"] body.jacobrent-home .text-muted,
+html[data-theme="dark"] body.jacobrent-home .muted,
+html[data-theme="dark"] body.jacobrent-home .section-subtitle,
+html[data-theme="dark"] body.jacobrent-home .location-line,
+html[data-theme="dark"] body.jacobrent-home .admin-user-date,
+html[data-theme="dark"] body.jacobrent-home .admin-protected,
+html[data-theme="dark"] body.jacobrent-home .inquiry-meta,
+html[data-theme="dark"] body.jacobrent-home .inquiry-empty p {
+    color: var(--theme-muted) !important;
+}
+
+@media (max-width: 768px) {
+body.jacobrent-home .airbnb-trust {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+body.jacobrent-home .airbnb-hero {
+        min-height: 0;
+        padding: 1.25rem 1rem 1.5rem;
+        background-position: center, 62% center;
+    }
+body.jacobrent-home .airbnb-hero-copy {
+        padding: 1rem 0.35rem 0.5rem;
+    }
+body.jacobrent-home .home-wordmark h1 {
+        font-size: 2.75rem;
+    }
+body.jacobrent-home .home-footer-inner {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+body.jacobrent-home .home-footer-links {
+        justify-content: flex-start;
+        gap: 1rem;
+        grid-column: 1;
+        grid-row: auto;
+        padding-top: 0.35rem;
+    }
+body.jacobrent-home .home-footer-inner > p {
+        margin-top: -0.4rem;
+    }
+body.jacobrent-home .home-footer-copy {
+        grid-column: 1;
+    }
+body.jacobrent-home .section-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+body.jacobrent-home .text-link,
+body.jacobrent-home .show-all-link {
+    color: var(--ui-primary);
+    font-weight: 700;
+}
+
+body.jacobrent-home .text-link:hover,
+body.jacobrent-home .show-all-link:hover {
+    color: var(--ui-primary-dark);
+}
+
+body.jacobrent-home .airbnb-hero {
+    min-height: 525px;
+    padding: 2rem;
+    border-radius: 18px;
+    box-shadow: 0 24px 56px rgba(17, 40, 35, 0.14);
+}
+
+body.jacobrent-home .airbnb-hero-copy h1,
+body.jacobrent-home .airbnb-hero-copy h2,
+body.jacobrent-home .home-wordmark h1 {
+    letter-spacing: 0;
+}
+
+body.jacobrent-home .home-search-form {
+    display: grid;
+    gap: 0.45rem;
+    max-width: 670px;
+    margin: 0 0 1.5rem;
+    padding: 0.85rem 1rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.82);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 12px 32px rgba(8, 28, 26, 0.18);
+}
+
+body.jacobrent-home .home-search-form > label {
+    margin: 0;
+    color: #36534c;
+    font-size: 0.76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+body.jacobrent-home .home-search-controls {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+body.jacobrent-home .home-search-icon {
+    color: var(--ui-primary);
+    font-size: 1.1rem;
+}
+
+body.jacobrent-home .home-search-form .form-control {
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: #183a35;
+}
+
+body.jacobrent-home .home-search-form .form-control:focus {
+    box-shadow: none;
+}
+
+body.jacobrent-home .home-search-form .btn {
+    min-height: 46px;
+    white-space: nowrap;
+}
+
+body.jacobrent-home .airbnb-card,
+body.jacobrent-home .property-card,
+body.jacobrent-home .auth-card,
+body.jacobrent-home .profile-panel,
+body.jacobrent-home .inquiry-card,
+body.jacobrent-home .glass-card,
+body.jacobrent-home .dashboard-stat-card,
+body.jacobrent-home .admin-stat-card,
+body.jacobrent-home .admin-table-wrap,
+body.jacobrent-home .inquiry-empty,
+body.jacobrent-home .dashboard-empty {
+    border-radius: 8px !important;
+    border-color: var(--ui-border);
+    box-shadow: var(--ui-shadow);
+}
+
+body.jacobrent-home .airbnb-card,
+body.jacobrent-home .property-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+body.jacobrent-home .airbnb-card:hover,
+body.jacobrent-home .property-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 38px rgba(24, 58, 53, 0.14);
+}
+
+body.jacobrent-home .airbnb-image-wrap,
+body.jacobrent-home .property-image {
+    height: 244px;
+    background-color: #dfe9e5;
+}
+
+body.jacobrent-home .airbnb-card-body,
+body.jacobrent-home .property-card .card-body {
+    padding: 1.1rem 1.15rem 1.2rem !important;
+}
+
+body.jacobrent-home .airbnb-card-body h3,
+body.jacobrent-home .property-card .card-title {
+    font-family: 'Manrope', 'DM Sans', sans-serif;
+    font-size: 1.08rem;
+    font-weight: 750;
+}
+
+html[data-theme="dark"] body.jacobrent-home .text-success,
+html[data-theme="dark"] body.jacobrent-home .text-link,
+html[data-theme="dark"] body.jacobrent-home .show-all-link {
+    color: #8ed0bf !important;
+}
+
+html[data-theme="dark"] body.jacobrent-home .property-search-form,
+html[data-theme="dark"] body.jacobrent-home .property-search-form .form-control,
+html[data-theme="dark"] body.jacobrent-home .home-search-form .form-control {
+    color: var(--ui-ink);
+}
+
+html[data-theme="dark"] body.jacobrent-home .home-search-form > label {
+    color: #294d45;
+}
+
+html[data-theme="dark"] body.jacobrent-home .home-search-form {
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+@media (max-width: 767.98px) {
+body.jacobrent-home .home-search-form {
+        margin-right: auto;
+        margin-left: auto;
+    }
+body.jacobrent-home .home-search-controls {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+body.jacobrent-home .home-search-form .btn {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
+body.jacobrent-home .airbnb-hero {
+        padding: 1.1rem;
+        border-radius: 12px;
+    }
+body.jacobrent-home .airbnb-hero-copy .home-hero-heading {
+        font-size: 1.75rem;
+    }
+body.jacobrent-home .airbnb-hero-copy h1,
+body.jacobrent-home .home-wordmark h1 {
+        overflow-wrap: anywhere;
+    }
+}
+
+/* Undo the newer shared homepage styles that would otherwise hide the birds or restyle the hero */
+body.jacobrent-home .airbnb-hero { isolation: auto; }
+body.jacobrent-home .airbnb-hero::after { display: none; }
+body.jacobrent-home .airbnb-hero::before { width: auto; height: auto; border: 0; border-radius: 0; box-shadow: none; z-index: 0; }
+body.jacobrent-home .airbnb-hero-copy { max-width: 720px; margin: 0; text-align: left; }
+body.jacobrent-home .airbnb-hero-copy > p { max-width: 680px; margin: 0 0 1rem; font-size: 1rem; line-height: 1.5; }
+body.jacobrent-home .home-wordmark { display: block; justify-content: normal; }
+body.jacobrent-home .home-wordmark-bird { display: block; }
+body.jacobrent-home .airbnb-cta { justify-content: flex-start; }
+body.jacobrent-home .home-search-form { margin-left: 0; margin-right: 0; }
+@media (max-width: 575.98px) {
+    body.jacobrent-home .home-wordmark h1 { font-size: 3rem; }
+}
