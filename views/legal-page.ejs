@@ -33,10 +33,10 @@
             <% (page.sections || []).forEach(section => { %>
                 <section>
                     <h2><%= section.heading %></h2>
-                    <% (section.paragraphs || []).forEach(text => { %><p><%= text %></p><% }) %>
+                    <% (section.paragraphs || []).forEach(text => { %><p><%- rich(text) %></p><% }) %>
                     <% if (section.items) { %>
                         <ul class="legal-list">
-                            <% section.items.forEach(item => { %><li><%= item %></li><% }) %>
+                            <% section.items.forEach(item => { %><li><%- rich(item) %></li><% }) %>
                         </ul>
                     <% } %>
                 </section>
@@ -45,8 +45,8 @@
                 <section>
                     <% page.faqs.forEach(([question, answer]) => { %>
                         <details class="faq-item">
-                            <summary><%= question %></summary>
-                            <p><%= answer %></p>
+                            <summary><%- rich(question) %></summary>
+                            <p><%- rich(answer) %></p>
                         </details>
                     <% }) %>
                 </section>

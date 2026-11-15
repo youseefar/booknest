@@ -967,9 +967,21 @@ html[data-theme="dark"] .friendly-error-detail {
 
 .legal-document p {
     max-width: 75ch;
-    margin-bottom: 0.65rem;
-    color: #475569;
+    margin-bottom: 0.85rem;
+    color: #3b4a5a;
+    font-size: 1.05rem;
+    line-height: 1.8;
 }
+
+.legal-document a { color: #0b5f8a; text-decoration: underline; text-underline-offset: 3px; }
+.legal-document a:hover, .legal-document a:focus-visible { color: #173849; }
+.legal-document .external-mark { margin-left: 0.15em; font-size: 0.85em; }
+.legal-document .legal-list { max-width: 75ch; font-size: 1.05rem; }
+.legal-document .legal-list li { line-height: 1.8; margin-bottom: 0.55rem; }
+.legal-document .faq-item summary { font-size: 1.05rem; }
+.legal-document .faq-item p { margin-top: 0.6rem; }
+html[data-theme="dark"] .legal-document a { color: #7cc4b8; }
+html[data-theme="dark"] .legal-document .legal-list { color: var(--theme-muted); }
 
 .legal-document p:last-child {
     margin-bottom: 0;

@@ -1,5 +1,6 @@
 const express = require('express');
 const { LAST_UPDATED, PAGES, PAGES_BY_SLUG } = require('../services/legal-pages');
+const { renderRichText } = require('../services/rich-text');
 
 const router = express.Router();
 
@@ -25,6 +26,7 @@ PAGES.forEach(page => {
         res.render('legal-page', {
             user: req.user || null,
             page: PAGES_BY_SLUG.get(page.slug),
+            rich: renderRichText,
             lastUpdated: LAST_UPDATED,
             supportEmail: getSupportEmail()
         });
