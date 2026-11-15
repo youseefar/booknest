@@ -140,25 +140,6 @@
     <script src="/js/wishlist.js"></script>
     <script src="/js/lazy-videos.js" defer></script>
 
-    <footer class="home-footer">
-        <div class="container home-footer-inner">
-            <a class="home-footer-brand" href="/" aria-label="Jacob Estate home">
-                <img class="brand-logo" src="/jacobrent-mark.svg" alt="Jacob Estate mark"><span>Jacob Estate</span>
-            </a>
-            <p>Find your next home to rent or buy.</p>
-            <nav class="home-footer-links" aria-label="Footer navigation">
-                <a href="/properties">Browse homes</a>
-                <% if (!user) { %>
-                    <a href="/register/landlord">List a property</a>
-                    <a href="/login">Sign in</a>
-                <% } else { %>
-                    <a href="/dashboard">Dashboard</a>
-                <% } %>
-                <a href="/terms">Terms of Service</a>
-                <a href="/privacy-policy">Privacy Policy</a>
-            </nav>
-            <span class="home-footer-copy">&copy; <%= new Date().getFullYear() %> Jacob Estate</span>
-        </div>
-    </footer>
+    <%- include('partials/legal-footer') %>
 </body>
 </html>
