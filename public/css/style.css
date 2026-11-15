@@ -3794,3 +3794,29 @@ h1 { letter-spacing:-.06em; }
 }
 html[data-theme="dark"] .site-footer { background:#0f2230; }
 @media print { .site-footer { display:none !important; } }
+
+/* Search while typing: result refresh state and the home-page suggestion dropdown */
+.is-updating { opacity: .55; transition: opacity .15s ease; }
+.home-search-form { position: relative; }
+.live-suggest {
+    position: absolute; z-index: 30; top: calc(100% - .35rem); left: 0; right: 0;
+    max-height: min(60vh, 26rem); overflow-y: auto; padding: .35rem;
+    border: 1px solid rgba(23, 56, 73, .14); border-radius: 12px; background: #fff;
+    box-shadow: 0 18px 40px rgba(8, 28, 26, .22); text-align: left;
+}
+.live-suggest[hidden] { display: none; }
+.live-suggest-item, .live-suggest-all {
+    display: flex; flex-direction: column; gap: .1rem; padding: .6rem .75rem;
+    border-radius: 8px; color: #173849; text-decoration: none;
+}
+.live-suggest-title { font-weight: 700; line-height: 1.3; }
+.live-suggest-meta { font-size: .85rem; color: #55707d; }
+.live-suggest-item:hover, .live-suggest-item[aria-selected="true"], .live-suggest-all:hover { background: #eef4f7; }
+.live-suggest-item:focus-visible, .live-suggest-all:focus-visible { outline: 2px solid #0b5f8a; outline-offset: -2px; }
+.live-suggest-all { margin-top: .15rem; border-top: 1px solid rgba(23, 56, 73, .1); border-radius: 0 0 8px 8px; font-weight: 700; color: #0b5f8a; }
+.live-suggest-empty { padding: .75rem; color: #55707d; }
+html[data-theme="dark"] .live-suggest { background: #12212c; border-color: rgba(255, 255, 255, .14); }
+html[data-theme="dark"] .live-suggest-item, html[data-theme="dark"] .live-suggest-all { color: #e6f0f5; }
+html[data-theme="dark"] .live-suggest-meta, html[data-theme="dark"] .live-suggest-empty { color: #a9bfcc; }
+html[data-theme="dark"] .live-suggest-item:hover, html[data-theme="dark"] .live-suggest-item[aria-selected="true"], html[data-theme="dark"] .live-suggest-all:hover { background: rgba(255, 255, 255, .08); }
+@media (prefers-reduced-motion: reduce) { .is-updating { transition: none; } }

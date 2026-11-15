@@ -1,7 +1,4 @@
 (() => {
-    const videos = document.querySelectorAll('video[data-lazy-video]');
-    if (!videos.length) return;
-
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const activate = video => {
         if (video.dataset.loaded) return;
@@ -14,26 +11,34 @@
         }
     };
 
-    if (!('IntersectionObserver' in window)) {
-        videos.forEach(video => {
-            activate(video);
-            playPreview(video);
-        });
-        return;
-    }
+    const observer = 'IntersectionObserver' in window
+        ? new IntersectionObserver(entries => {
+            for (const entry of entries) {
+                const video = entry.target;
+                if (entry.isIntersecting) {
+                    activate(video);
+                    playPreview(video);
+                } else if (video.hasAttribute('data-video-preview')) {
+                    video.pause();
+                    video.classList.remove('is-playing');
+                }
+            }
+        }, { rootMargin: '160px 0px' })
+        : null;
 
-    const observer = new IntersectionObserver(entries => {
-        for (const entry of entries) {
-            const video = entry.target;
-            if (entry.isIntersecting) {
+    const watchVideos = () => {
+        document.querySelectorAll('video[data-lazy-video]:not([data-watched])').forEach(video => {
+            video.dataset.watched = 'true';
+            if (observer) {
+                observer.observe(video);
+            } else {
                 activate(video);
                 playPreview(video);
-            } else if (video.hasAttribute('data-video-preview')) {
-                video.pause();
-                video.classList.remove('is-playing');
             }
-        }
-    }, { rootMargin: '160px 0px' });
+        });
+    };
 
-    videos.forEach(video => observer.observe(video));
+    watchVideos();
+    // Search results can be replaced while typing; watch the new videos too.
+    document.addEventListener('live-results:updated', watchVideos);
 })();

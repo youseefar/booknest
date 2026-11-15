@@ -37,7 +37,7 @@
                 <label for="home-search">Find a place near you</label>
                 <div class="home-search-controls">
                     <span class="home-search-icon" aria-hidden="true"><i class="bi bi-geo-alt"></i></span>
-                    <input id="home-search" class="form-control" type="search" name="q" placeholder="Search by area, address, or property name">
+                    <input id="home-search" class="form-control" type="search" name="q" maxlength="100" autocomplete="off" enterkeyhint="search" data-suggest-url="/properties/suggest" placeholder="Search by area, address, or property name">
                     <button class="btn btn-primary btn-search" type="submit"><i class="bi bi-search me-2"></i>Search homes</button>
                 </div>
             </form>
@@ -139,6 +139,7 @@
 
     <script src="/js/wishlist.js"></script>
     <script src="/js/lazy-videos.js" defer></script>
+    <script src="/js/live-search.js" defer></script>
 
     <%- include('partials/legal-footer') %>
 </body>

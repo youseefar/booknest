@@ -7,7 +7,7 @@ const { requireRole } = require('../middleware/auth');
 const { SORT_OPTIONS, getPagination, parsePage, parseSort } = require('../services/listing-pagination');
 const { parseSavedPropertyIds } = require('../services/saved-property-ids');
 const { parseOptionalRoomCount } = require('../services/property-details');
-const { normalizePropertySearch } = require('../services/property-search');
+const { buildPropertySearchFilter, normalizePropertySearch } = require('../services/property-search');
 const { Readable } = require('node:stream');
 const {
     cleanupOrQueueVideos,
@@ -102,6 +102,48 @@ router.get('/saved-properties', async (req, res, next) => {
 });
 
 // View all properties
+// Which listings a visitor may see in lists and search results (same rules everywhere).
+function listingVisibilityFilter(user) {
+    if (user?.role === 'admin') return { archivedAt: null };
+    if (user?.role === 'landlord') {
+        return {
+            $or: [
+                { status: { $in: ['available', 'rented', 'sold'] }, verificationStatus: 'verified' },
+                { landlordId: user._id, archivedAt: null }
+            ]
+        };
+    }
+    return { status: { $in: ['available', 'rented', 'sold'] }, verificationStatus: 'verified' };
+}
+
+// Small JSON feed for the search-as-you-type box on the home page.
+router.get('/properties/suggest', async (req, res, next) => {
+    try {
+        res.set('Cache-Control', 'no-store');
+        const search = String(req.query.q || '').trim();
+        const normalizedSearch = search.length <= 100 ? normalizePropertySearch(search) : '';
+        const searchFilter = buildPropertySearchFilter(normalizedSearch);
+        if (!searchFilter) return res.json({ total: 0, results: [] });
+        const filter = { ...listingVisibilityFilter(req.user), $and: searchFilter.$and };
+        const [total, found] = await Promise.all([
+            Property.countDocuments(filter),
+            Property.find(filter).sort(SORT_OPTIONS.latest).limit(6).select('title location price listingType')
+        ]);
+        return res.json({
+            total,
+            results: found.map(property => ({
+                id: String(property._id),
+                title: property.title,
+                location: property.location,
+                price: property.price,
+                listingType: property.listingType
+            }))
+        });
+    } catch (err) {
+        return next(err);
+    }
+});
+
 router.get('/properties', async (req, res, next) => {
     try {
         await Booking.syncExpiredSubscriptions();
@@ -120,27 +162,11 @@ router.get('/properties', async (req, res, next) => {
         const listingType = ['rent', 'sale'].includes(req.query.type) ? req.query.type : '';
         const sort = parseSort(req.query.sort);
         const requestedPage = parsePage(req.query.page);
-        const filter = req.user?.role === 'admin'
-            ? { archivedAt: null }
-            : req.user?.role === 'landlord'
-            ? {
-                $or: [
-                    { status: { $in: ['available', 'rented', 'sold'] }, verificationStatus: 'verified' },
-                    { landlordId: req.user._id, archivedAt: null }
-                ]
-            }
-            : { status: { $in: ['available', 'rented', 'sold'] }, verificationStatus: 'verified' };
+        const filter = listingVisibilityFilter(req.user);
 
         if (listingType) filter.listingType = listingType;
 
-        if (search) {
-            const searchFilter = { $text: { $search: normalizedSearch } };
-            if (Object.keys(filter).length) {
-                filter.$and = [searchFilter];
-            } else {
-                Object.assign(filter, searchFilter);
-            }
-        }
+        if (search) filter.$and = buildPropertySearchFilter(normalizedSearch).$and;
 
         const totalCount = await Property.countDocuments(filter);
         const pagination = getPagination(requestedPage, totalCount);

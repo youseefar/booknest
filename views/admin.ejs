@@ -140,10 +140,10 @@
     <section class="admin-console-section mb-5">
         <div class="section-head">
             <div><span class="eyebrow text-uppercase">Access control</span><h3>All users</h3></div>
-            <span class="pill pill-verified"><%= users.length %> shown</span>
+            <span class="pill pill-verified" id="admin-users-count"><%= users.length %> shown</span>
         </div>
 
-            <form class="admin-filter-bar mb-3" method="GET" action="/admin">
+            <form class="admin-filter-bar mb-3" method="GET" action="/admin" data-live-search data-live-target="#admin-users-count, #admin-users-table">
                 <div class="admin-filter-search">
                 <input
                     type="search"
@@ -167,7 +167,7 @@
                 <a class="btn btn-outline-secondary" href="/admin">Reset</a>
         </form>
 
-        <div class="table-responsive">
+        <div class="table-responsive" id="admin-users-table">
             <table class="table table-striped table-hover align-middle bg-white shadow-sm rounded overflow-hidden">
                 <thead class="table-dark">
                     <tr>
@@ -219,8 +219,8 @@
             <span class="small text-muted">Showing the 20 most recently updated matches</span>
         </div>
         <form class="admin-filter-bar admin-listing-filters mb-3" method="GET" action="/admin">
-            <input type="hidden" name="q" value="<%= search %>">
-            <input type="hidden" name="role" value="<%= role %>">
+            <input type="hidden" name="q" value="<%= search %>" data-live-sync>
+            <input type="hidden" name="role" value="<%= role %>" data-live-sync>
             <div>
                 <label class="visually-hidden" for="listing-status">Listing availability</label>
                 <select id="listing-status" class="form-select" name="propertyStatus">
@@ -295,6 +295,7 @@
 </main>
 <script src="/js/payout-account.js" defer></script>
 <script src="/js/lazy-videos.js" defer></script>
+<script src="/js/live-search.js" defer></script>
 <%- include('partials/legal-footer') %>
 </body>
 </html>

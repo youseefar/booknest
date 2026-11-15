@@ -41,7 +41,8 @@
         saveIds();
     }
 
-    document.querySelectorAll('.wish-btn[data-property-id]').forEach(button => {
+    const bindWishButtons = () => document.querySelectorAll('.wish-btn[data-property-id]:not([data-wish-bound])').forEach(button => {
+        button.dataset.wishBound = 'true';
         const propertyId = button.dataset.propertyId;
         const icon = button.querySelector('i');
 
@@ -79,6 +80,10 @@
             }
         });
     });
+
+    bindWishButtons();
+    // Search results can be replaced while typing; wire up the new hearts.
+    document.addEventListener('live-results:updated', bindWishButtons);
 
     updateSavedLinks();
 })();

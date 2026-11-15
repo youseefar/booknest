@@ -44,11 +44,11 @@
             <% } %>
         </div>
 
-        <form class="property-search-form mb-4" method="GET" action="<%= typeof landlordView !== 'undefined' && landlordView ? '/my-properties' : '/properties' %>" role="search">
+        <form class="property-search-form mb-4" data-live-search data-live-target="#property-results" method="GET" action="<%= typeof landlordView !== 'undefined' && landlordView ? '/my-properties' : '/properties' %>" role="search">
             <label class="visually-hidden" for="property-search">Search homes</label>
             <i class="bi bi-search" aria-hidden="true"></i>
             <% if (!(typeof landlordView !== 'undefined' && landlordView)) { %>
-                <input id="property-search" class="form-control" type="search" name="q" maxlength="100" value="<%= typeof search !== 'undefined' ? search : '' %>" placeholder="Search by property, area, or address">
+                <input id="property-search" class="form-control" type="search" name="q" maxlength="100" autocomplete="off" enterkeyhint="search" value="<%= typeof search !== 'undefined' ? search : '' %>" placeholder="Search by property, area, or address">
                 <label class="visually-hidden" for="property-type">Listing type</label>
                 <select id="property-type" class="form-select" name="type">
                     <option value="">Rent or buy</option>
@@ -63,11 +63,10 @@
                 <option value="price_desc" <%= sort === 'price_desc' ? 'selected' : '' %>>Price: high to low</option>
             </select>
             <button class="btn btn-primary" type="submit">Search</button>
-            <% if ((typeof search !== 'undefined' && search) || (typeof listingType !== 'undefined' && listingType) || sort !== 'latest') { %>
-                <a class="btn btn-outline-secondary" href="<%= typeof landlordView !== 'undefined' && landlordView ? '/my-properties' : '/properties' %>">Clear</a>
-            <% } %>
+            <a class="btn btn-outline-secondary" data-live-clear href="<%= typeof landlordView !== 'undefined' && landlordView ? '/my-properties' : '/properties' %>" <%= ((typeof search !== 'undefined' && search) || (typeof listingType !== 'undefined' && listingType) || sort !== 'latest') ? '' : 'hidden' %>>Clear</a>
         </form>
 
+        <div id="property-results">
         <p class="text-muted small mb-3" role="status">
             <strong><%= totalCount.toLocaleString() %></strong> <%= totalCount === 1 ? 'property' : 'properties' %>
             <% if (totalPages > 1) { %> · Page <%= page %> of <%= totalPages %><% } %>
@@ -170,8 +169,10 @@
                 </ul>
             </nav>
         <% } %>
+        </div>
     </main>
     <script src="/js/wishlist.js"></script>
+    <script src="/js/live-search.js" defer></script>
     <script src="/js/lazy-videos.js" defer></script>
     <%- include('partials/legal-footer') %>
 </body>
