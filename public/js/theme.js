@@ -220,50 +220,13 @@
         window.setTimeout(showInstallPrompt, 1800);
     }
 
-    // Loading feedback: a thin top progress bar for every load and navigation, plus a branded
-    // splash (logo in a disc with orbiting rings) on every page load.
+    // Loading feedback: the branded splash (logo in a disc with orbiting rings) is the only
+    // loader. It shows as soon as you leave a page and again while the next page loads.
     const SPLASH_MIN_MS = 800;
     const SPLASH_MAX_MS = 8000;
-    let progressBar;
-    let progressTimer;
-    let progressGuard;
-    let progressValue = 0;
     let splashShownAt = 0;
     let splashTimer;
     let pageReady = false;
-
-    const startProgress = () => {
-        if (!progressBar?.isConnected) {
-            progressBar = document.createElement('div');
-            progressBar.className = 'page-progress';
-            progressBar.setAttribute('aria-hidden', 'true');
-            root.append(progressBar);
-        }
-        window.clearInterval(progressTimer);
-        progressBar.classList.remove('is-done');
-        progressValue = 0.08;
-        progressBar.style.transform = `scaleX(${progressValue})`;
-        progressTimer = window.setInterval(() => {
-            progressValue += (0.92 - progressValue) * 0.08;
-            progressBar.style.transform = `scaleX(${progressValue.toFixed(3)})`;
-        }, 200);
-        // If the browser stays on this page (a download or mail link), do not leave the bar hanging.
-        window.clearTimeout(progressGuard);
-        progressGuard = window.setTimeout(finishProgress, 12000);
-    };
-
-    const finishProgress = () => {
-        window.clearInterval(progressTimer);
-        window.clearTimeout(progressGuard);
-        if (!progressBar) return;
-        const bar = progressBar;
-        bar.style.transform = 'scaleX(1)';
-        window.setTimeout(() => bar.classList.add('is-done'), 150);
-        window.setTimeout(() => {
-            bar.remove();
-            if (progressBar === bar) progressBar = null;
-        }, 700);
-    };
 
     const showSplash = () => {
         if (pageReady || pageLoader?.isConnected) return;
@@ -326,7 +289,6 @@
     const onPageReady = () => {
         pageReady = true;
         window.clearTimeout(splashTimer);
-        finishProgress();
         hideSplash();
     };
 
@@ -335,9 +297,10 @@
     document.addEventListener('DOMContentLoaded', onPageReady, { once: true });
     window.addEventListener('load', onPageReady, { once: true });
     window.addEventListener('pageshow', event => { if (event.persisted) onPageReady(); });
+    // Leaving the page: show the logo loader straight away instead of waiting for the next page.
     window.addEventListener('beforeunload', () => {
         pageReady = false;
-        startProgress();
+        showSplash();
     });
 
     try {
