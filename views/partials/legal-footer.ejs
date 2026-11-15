@@ -4,108 +4,72 @@
 %>
 <footer class="site-footer" aria-label="Site footer">
     <div class="container">
-        <div class="site-footer-top">
-            <div class="site-footer-about">
-                <a class="site-footer-brand" href="/" aria-label="Jacob Estate home">
-                    <img class="brand-logo" src="/jacobrent-mark.svg" alt=""><span>Jacob Estate</span>
-                </a>
-                <p>Jacob Estate is an online marketplace for homes to rent and properties for sale in Nigeria. Every listing comes with a video tour, and rental payments are made securely through <a class="site-footer-external" href="https://paystack.com" target="_blank" rel="noopener noreferrer">Paystack<span class="site-footer-out" aria-hidden="true">&nearr;</span><span class="visually-hidden"> (opens in a new tab)</span></a>.</p>
-                <p>Questions? Email <a href="mailto:Jacobintegratedservices@gmail.com">Jacobintegratedservices@gmail.com</a> or visit the <a href="/contact">Contact page</a>.</p>
-            </div>
-
-            <nav class="site-footer-columns" aria-label="Footer navigation">
-                <div class="site-footer-col">
-                    <h2>Explore</h2>
-                    <ul>
-                        <li><a href="/properties">All homes</a></li>
-                        <li><a href="/properties?type=rent">Homes for rent</a></li>
-                        <li><a href="/properties?type=sale">Properties for sale</a></li>
-                        <li><a href="/saved-properties">Saved homes</a></li>
-                        <li><a href="/faq">How it works (FAQ)</a></li>
-                    </ul>
-                </div>
-
-                <div class="site-footer-col">
-                    <h2>Property owners</h2>
-                    <ul>
-                        <% if (footerRole === 'landlord') { %>
-                            <li><a href="/dashboard">Owner dashboard</a></li>
-                            <li><a href="/add-property">Add a property</a></li>
-                            <li><a href="/my-properties">My listings</a></li>
-                        <% } else if (!footerUser) { %>
-                            <li><a href="/register/landlord">List a property</a></li>
-                        <% } %>
-                        <li><a href="/listing-guidelines">Listing guidelines</a></li>
-                        <li><a href="/payment-policy">Payments and payouts</a></li>
-                        <li><a href="/advertising-disclosure">Advertising</a></li>
-                    </ul>
-                </div>
-
-                <div class="site-footer-col">
-                    <h2>Your account</h2>
-                    <ul>
-                        <% if (!footerUser) { %>
-                            <li><a href="/login">Sign in</a></li>
-                            <li><a href="/register">Create an account</a></li>
-                            <li><a href="/register/landlord">Owner sign up</a></li>
-                            <li><a href="/forgot-password">Forgot password</a></li>
-                        <% } else { %>
-                            <li><a href="/profile">Profile and settings</a></li>
-                            <% if (footerRole === 'student') { %>
-                                <li><a href="/my-bookings">My bookings</a></li>
-                                <li><a href="/my-inquiries">My inquiries</a></li>
-                            <% } %>
-                            <% if (footerRole === 'admin') { %>
-                                <li><a href="/admin">Admin panel</a></li>
-                            <% } %>
-                            <li><a href="/logout">Log out</a></li>
-                        <% } %>
-                    </ul>
-                </div>
-
-                <div class="site-footer-col">
-                    <h2>Company</h2>
-                    <ul>
-                        <li><a href="/about">About us</a></li>
-                        <li><a href="/contact">Contact us</a></li>
-                        <li><a href="/faq">Frequently asked questions</a></li>
-                    </ul>
-                </div>
-
-                <div class="site-footer-col">
-                    <h2>Trust and safety</h2>
-                    <ul>
-                        <li><a href="/safety">Safety and fraud prevention</a></li>
-                        <li><a href="/payment-policy">Payment policy</a></li>
-                        <li><a href="/refund-policy">Refund policy</a></li>
-                        <li><a href="/listing-guidelines">How listings are reviewed</a></li>
-                    </ul>
-                </div>
-
-                <div class="site-footer-col">
-                    <h2>Legal</h2>
-                    <ul>
-                        <li><a href="/terms">Terms of service</a></li>
-                        <li><a href="/privacy-policy">Privacy policy</a></li>
-                        <li><a href="/cookie-policy">Cookie policy</a></li>
-                        <li><a href="/data-protection">Your data rights</a></li>
-                    </ul>
-                </div>
-
-                <div class="site-footer-col">
-                    <h2>Elsewhere</h2>
-                    <ul>
-                        <li><a class="site-footer-external" href="https://paystack.com" target="_blank" rel="noopener noreferrer">Paystack payments<span class="site-footer-out" aria-hidden="true">&nearr;</span><span class="visually-hidden"> (opens in a new tab)</span></a></li>
-                        <li><a class="site-footer-external" href="https://fccpc.gov.ng" target="_blank" rel="noopener noreferrer">Consumer protection (FCCPC)<span class="site-footer-out" aria-hidden="true">&nearr;</span><span class="visually-hidden"> (opens in a new tab)</span></a></li>
-                        <li><a class="site-footer-external" href="https://ndpc.gov.ng" target="_blank" rel="noopener noreferrer">Data protection (NDPC)<span class="site-footer-out" aria-hidden="true">&nearr;</span><span class="visually-hidden"> (opens in a new tab)</span></a></li>
-                    </ul>
-                </div>
-            </nav>
+        <div class="site-footer-intro">
+            <a class="site-footer-brand" href="/" aria-label="Jacob Estate home">
+                <img class="brand-logo" src="/jacobrent-mark.svg" alt=""><span>Jacob Estate</span>
+            </a>
+            <p><strong>Jacob Estate</strong> is an online marketplace where people in Nigeria find <a href="/properties?type=rent">homes to rent</a> and <a href="/properties?type=sale">properties for sale</a>. Every listing comes with a video tour, so you can see a place properly before you visit. You can read more <a href="/about">about us</a>, browse the <a href="/faq">frequently asked questions</a>, or <a href="/contact">contact us</a> directly at <a href="mailto:Jacobintegratedservices@gmail.com">Jacobintegratedservices@gmail.com</a>.</p>
         </div>
 
-        <p class="site-footer-note">
-            A &ldquo;verified&rdquo; label on a listing reflects our listing review only, not a guarantee of ownership, condition or availability, so always inspect a property before you pay. Read our <a href="/safety">safety advice</a> and <a href="/listing-guidelines">listing guidelines</a>, and see how we handle <a href="/privacy-policy">your information</a> and <a href="/cookie-policy">cookies</a>. By using Jacob Estate you agree to our <a href="/terms">Terms of service</a>.
-        </p>
+        <div class="site-footer-sections">
+            <section class="site-footer-section">
+                <h2>Finding a home</h2>
+                <p>Start with <a href="/properties">all homes</a>, or go straight to <a href="/properties?type=rent">homes for rent</a> or <a href="/properties?type=sale">properties for sale</a>. Watch the video tour on each listing, then keep the ones you like in your <a href="/saved-properties">saved homes</a> so you can compare them later. If you are not sure how booking, inquiries or payment work, the <a href="/faq">FAQ</a> explains each step, and the <a href="/safety">safety page</a> lists what to check before you pay.</p>
+            </section>
+
+            <section class="site-footer-section">
+                <h2>For property owners</h2>
+                <p>
+                    <% if (footerRole === 'landlord') { %>
+                        Manage your homes from your <a href="/dashboard">owner dashboard</a>, see everything you have posted under <a href="/my-properties">my listings</a>, or <a href="/add-property">add a new property</a> with its video tour.
+                    <% } else if (!footerUser) { %>
+                        If you own a home you want to rent out or sell, <a href="/register/landlord">sign up as a property owner</a> and post it with a video tour.
+                    <% } else { %>
+                        Property owners post their homes with a video tour and are paid through the platform.
+                    <% } %>
+                    Our <a href="/listing-guidelines">listing guidelines</a> explain what a good listing needs and how listings are reviewed, the <a href="/payment-policy">payment policy</a> explains payments and payouts, and the <a href="/advertising-disclosure">advertising disclosure</a> explains how promoted content is labelled.
+                </p>
+            </section>
+
+            <section class="site-footer-section">
+                <h2>Your account</h2>
+                <p>
+                    <% if (!footerUser) { %>
+                        <a href="/login">Sign in</a> to see your bookings and saved homes, or <a href="/register">create an account</a> if you are new. If you cannot remember your password you can <a href="/forgot-password">reset it by email</a>, and property owners can use the <a href="/register/landlord">owner sign-up</a> instead.
+                    <% } else { %>
+                        Update your details and password in your <a href="/profile">profile and settings</a>.
+                        <% if (footerRole === 'student') { %>
+                            You can follow your payments under <a href="/my-bookings">my bookings</a> and your questions to owners under <a href="/my-inquiries">my inquiries</a>.
+                        <% } %>
+                        <% if (footerRole === 'admin') { %>
+                            Review listings and users in the <a href="/admin">admin panel</a>.
+                        <% } %>
+                        When you are finished, <a href="/logout">log out</a>.
+                    <% } %>
+                    How we look after your information is explained in the <a href="/privacy-policy">privacy policy</a> and the <a href="/data-protection">data protection page</a>.
+                </p>
+            </section>
+
+            <section class="site-footer-section">
+                <h2>Company</h2>
+                <p>Learn who we are and what we do on the <a href="/about">about page</a>. If you have a question, a complaint or feedback, the <a href="/contact">contact page</a> shows how to reach us, and most common questions are already answered in the <a href="/faq">FAQ</a>. Our promotional content is labelled in the <a href="/advertising-disclosure">advertising disclosure</a>.</p>
+            </section>
+
+            <section class="site-footer-section">
+                <h2>Trust and safety</h2>
+                <p>Read the <a href="/safety">safety and fraud prevention advice</a> before you send any money, and always inspect a property yourself. Listings are reviewed under our <a href="/listing-guidelines">listing guidelines</a>, and a &ldquo;verified&rdquo; label reflects that review only, not a guarantee of ownership, condition or availability. Payments are explained in the <a href="/payment-policy">payment policy</a>, and the <a href="/refund-policy">refund policy</a> covers what happens if a payment cannot be completed as expected.</p>
+            </section>
+
+            <section class="site-footer-section">
+                <h2>Legal</h2>
+                <p>By using Jacob Estate you agree to our <a href="/terms">terms of service</a>. Our <a href="/privacy-policy">privacy policy</a> explains what information we collect and why, the <a href="/cookie-policy">cookie policy</a> explains how cookies are used, and the <a href="/data-protection">data protection page</a> explains your rights over your data. Read the <a href="/advertising-disclosure">advertising disclosure</a> for how sponsored or promoted content is handled.</p>
+            </section>
+        </div>
+
+        <div class="site-footer-external-block">
+            <h2>Useful links elsewhere</h2>
+            <p>Rental payments are processed by <a class="site-footer-external" href="https://paystack.com" target="_blank" rel="noopener noreferrer">Paystack<span class="site-footer-out" aria-hidden="true">&nearr;</span><span class="visually-hidden"> (opens in a new tab)</span></a>. If you want to learn more about your rights as a consumer in Nigeria, see the <a class="site-footer-external" href="https://fccpc.gov.ng" target="_blank" rel="noopener noreferrer">Federal Competition and Consumer Protection Commission<span class="site-footer-out" aria-hidden="true">&nearr;</span><span class="visually-hidden"> (opens in a new tab)</span></a>, and for your rights over personal data, see the <a class="site-footer-external" href="https://ndpc.gov.ng" target="_blank" rel="noopener noreferrer">Nigeria Data Protection Commission<span class="site-footer-out" aria-hidden="true">&nearr;</span><span class="visually-hidden"> (opens in a new tab)</span></a>. Jacob Estate is not affiliated with these organisations.</p>
+        </div>
 
         <div class="site-footer-bottom">
             <span>&copy; <%= new Date().getFullYear() %> Jacob Estate. All rights reserved.</span>
