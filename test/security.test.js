@@ -54,7 +54,11 @@ test('every external host used by pages, styles and scripts is allowed by the CS
     ];
     const hosts = new Set();
     for (const file of sources) {
-        for (const match of fs.readFileSync(file, 'utf8').matchAll(/https:\/\/[a-z0-9.-]+/gi)) hosts.add(match[0]);
+        // Plain links (<a href>) only send the visitor to another site; they load nothing onto the
+        // page, so the CSP does not govern them. Everything else (scripts, styles, images, fonts,
+        // frames, fetches) must still be on the allow-list.
+        const text = fs.readFileSync(file, 'utf8').replace(/<a\s[^>]*>/gi, '');
+        for (const match of text.matchAll(/https:\/\/[a-z0-9.-]+/gi)) hosts.add(match[0]);
     }
     for (const host of hosts) {
         if (['https://www.w3.org', 'https://schema.org', 'https://paystack.com', 'https://checkout.paystack.com'].includes(host)) continue;
