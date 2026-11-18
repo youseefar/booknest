@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/css/style.css">
     <script src="/js/theme.js"></script>
 </head>
-<body class="bg-soft" data-saved-properties-page="true" data-rendered-saved-ids="<%= properties.map(property => property._id).join(',') %>">
+<body class="bg-soft" data-saved-properties-page="true" data-rendered-saved-ids="<%= properties.map(property => property._id).join(',') %>"<%- user ? ' data-signed-in="true"' : '' %>>
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top shadow-sm">
         <div class="container">
             <a class="navbar-brand brand fw-bold" href="/" aria-label="Jacob Estate home"><img class="brand-logo" src="/jacobrent-mark.svg" alt="Jacob Estate mark">Jacob Estate</a>
@@ -18,7 +18,7 @@
                 <a class="nav-link text-dark" href="/properties">Browse homes</a>
                 <a class="nav-link text-dark" href="/saved-properties" data-saved-properties-link aria-current="page">Saved homes</a>
                 <% if (user) { %>
-                    <a class="nav-link text-dark" href="/dashboard">Dashboard</a>
+                    <a class="nav-link text-dark" href="/dashboard">Dashboard</a><%- include('partials/notification-link') %>
                 <% } else { %>
                     <a class="nav-link text-dark" href="/login">Sign in</a>
                 <% } %>
@@ -29,7 +29,7 @@
         <div class="mb-4">
             <span class="eyebrow text-uppercase">Your shortlist</span>
             <h1 class="display-6 fw-bold mb-1">Saved homes</h1>
-            <p class="text-muted mb-0">Saved privately on this device. Sign-in is not required.</p>
+            <p class="text-muted mb-0"><% if (user) { %>Saved to your account, so your list follows you to any device where you sign in.<% } else { %>Saved privately on this device. <a href="/login">Sign in</a> to keep your list on your account.<% } %></p>
         </div>
         <p class="text-muted small" role="status"><span data-saved-count><%= properties.length %></span> saved <span data-saved-label><%= properties.length === 1 ? 'home' : 'homes' %></span></p>
         <div class="row g-4">
@@ -74,7 +74,7 @@
         </div>
         <div class="empty-state mt-4" data-saved-empty <%= properties.length ? 'hidden' : '' %>>
             <strong>No saved homes yet.</strong>
-            <p>Tap the heart on a property to keep it on this device.</p>
+            <p>Tap the heart on a property to save it<%= user ? ' to your account' : ' on this device' %>.</p>
             <a class="btn btn-primary mt-2" href="/properties">Explore homes</a>
         </div>
     </main>

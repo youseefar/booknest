@@ -128,7 +128,7 @@ const PAGES = [
                 items: [
                     `A session cookie keeps you signed in. It is needed for the service to work, so there is no way to stay signed in without it.`,
                     `Short-lived data used to complete Google sign-in securely, when you choose that option. See the [sign-in page](/login).`,
-                    `Browser local storage on your device remembers your display theme, your [saved homes](/saved-properties) list and whether you dismissed the install prompt.`,
+                    `Browser local storage on your device remembers your display theme, a copy of your [saved homes](/saved-properties) list and whether you dismissed the install prompt. When you are signed in, the saved homes list is also kept on your account.`,
                     `The installable web app, a kind of [progressive web app](https://en.wikipedia.org/wiki/Progressive_web_app), may keep a small offline copy of basic pages and icons so the app opens when you have no connection.`
                 ]
             },

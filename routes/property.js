@@ -5,7 +5,9 @@ const PropertyInquiry = require('../models/PropertyInquiry');
 const mongoose = require('mongoose');
 const { requireRole } = require('../middleware/auth');
 const { SORT_OPTIONS, getPagination, parsePage, parseSort } = require('../services/listing-pagination');
+const User = require('../models/User');
 const { parseSavedPropertyIds } = require('../services/saved-property-ids');
+const { mergeSavedIds } = require('../services/saved-properties');
 const { parseOptionalRoomCount } = require('../services/property-details');
 const { buildPropertySearchFilter, normalizePropertySearch } = require('../services/property-search');
 const { Readable } = require('node:stream');
@@ -82,7 +84,15 @@ function handleVideoUploadError(error, req, res, next) {
 
 router.get('/saved-properties', async (req, res, next) => {
     try {
-        const savedIds = parseSavedPropertyIds(req.query.ids);
+        let savedIds = parseSavedPropertyIds(req.query.ids);
+        if (req.user) {
+            // Signed in: the account list is the source of truth; hearts from this device are merged in.
+            const accountIds = (req.user.savedProperties || []).map(String);
+            const merged = mergeSavedIds(accountIds, savedIds);
+            const visible = new Set((await Property.find({ _id: { $in: merged }, verificationStatus: 'verified', status: { $in: ['available', 'rented', 'sold'] } }).select('_id')).map(item => String(item._id)));
+            savedIds = merged.filter(id => visible.has(id));
+            if (savedIds.join() !== accountIds.join()) await User.updateOne({ _id: req.user._id }, { $set: { savedProperties: savedIds } });
+        }
         const properties = savedIds.length
             ? await Property.find({
                 _id: { $in: savedIds },
@@ -224,6 +234,7 @@ router.get('/property/:id', async (req, res, next) => {
             existingInquiry,
             inquiryResult: req.query.inquiry,
             reviewResult: req.query.review,
+            reportResult: req.query.report,
             paystackMode: req.app.locals.paystackMode,
             paystackReady: Boolean(property.landlordId?.payoutSubaccountCode)
                 && property.landlordId.payoutSubaccountMode === req.app.locals.paystackMode

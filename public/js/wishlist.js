@@ -22,6 +22,21 @@
         }
     };
 
+    const signedIn = document.body.dataset.signedIn === 'true';
+    const entries = new Set();
+
+    // Signed-in visitors keep their list on their account; the device copy is only a cache.
+    const callApi = async (method, path, payload) => {
+        const response = await fetch(path, {
+            method,
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+            body: payload ? JSON.stringify(payload) : undefined
+        });
+        if (!response.ok) throw new Error(`Saved homes returned ${response.status}`);
+        return response.json();
+    };
+
     const updateSavedLinks = () => {
         const href = savedIds.length
             ? `/saved-properties?ids=${encodeURIComponent(savedIds.join(','))}`
@@ -54,7 +69,8 @@
         };
 
         setSavedState(savedIds.includes(propertyId));
-        button.addEventListener('click', event => {
+        entries.add({ button, propertyId, setSavedState });
+        button.addEventListener('click', async event => {
             event.preventDefault();
             event.stopPropagation();
 
@@ -63,12 +79,25 @@
                 button.setAttribute('aria-label', 'You can save up to 100 homes on this device');
                 return;
             }
+            const previousIds = savedIds;
             savedIds = isSaved
                 ? savedIds.filter(id => id !== propertyId)
                 : [...savedIds, propertyId];
             saveIds();
             setSavedState(!isSaved);
             updateSavedLinks();
+            if (signedIn) {
+                try {
+                    await callApi(isSaved ? 'DELETE' : 'POST', `/api/saved-properties/${propertyId}`);
+                } catch (error) {
+                    savedIds = previousIds;
+                    saveIds();
+                    setSavedState(isSaved);
+                    updateSavedLinks();
+                    button.setAttribute('aria-label', 'Could not update your saved homes. Please try again.');
+                    return;
+                }
+            }
             if (savedPage && isSaved) {
                 button.closest('[data-saved-card]')?.remove();
                 const count = document.querySelector('[data-saved-count]');
@@ -82,8 +111,26 @@
     });
 
     bindWishButtons();
+
+    const refreshButtons = () => entries.forEach(entry => {
+        if (!entry.button.isConnected) return entries.delete(entry);
+        entry.setSavedState(savedIds.includes(entry.propertyId));
+    });
+
+    // First visit while signed in: merge this device's hearts into the account, then show the account list.
+    if (signedIn) {
+        callApi('PUT', '/api/saved-properties', { ids: savedIds.join(',') })
+            .then(data => {
+                if (!Array.isArray(data.ids)) return;
+                savedIds = data.ids.filter(id => /^[a-f\d]{24}$/i.test(id)).slice(0, maxSavedProperties);
+                saveIds();
+                refreshButtons();
+                updateSavedLinks();
+            })
+            .catch(() => { /* keep the device copy when the account cannot be reached */ });
+    }
     // Search results can be replaced while typing; wire up the new hearts.
-    document.addEventListener('live-results:updated', bindWishButtons);
+    document.addEventListener('live-results:updated', () => { bindWishButtons(); refreshButtons(); });
 
     updateSavedLinks();
 })();

@@ -3,6 +3,7 @@ const express = require('express');
 const Booking = require('../models/Booking');
 const Property = require('../models/Property');
 const { requireRole } = require('../middleware/auth');
+const { notifyUser } = require('../services/notifications');
 
 const router = express.Router();
 
@@ -60,6 +61,15 @@ router.post('/bookings/:id/status', requireRole('landlord'), async (req, res) =>
     booking.status = req.body.status;
     booking.landlordViewed = true;
     await booking.save();
+    if (['approved', 'rejected'].includes(req.body.status)) {
+        const approved = req.body.status === 'approved';
+        await notifyUser(booking.studentId, {
+            category: 'booking',
+            title: approved ? 'Booking request approved' : 'Booking request declined',
+            body: approved ? 'The property manager approved your booking request.' : 'The property manager declined your booking request.',
+            link: '/my-bookings'
+        }, { email: true, baseUrl: process.env.APP_URL || '' });
+    }
     res.redirect('/bookings');
 });
 

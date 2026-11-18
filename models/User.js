@@ -80,6 +80,11 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: null
     },
+    // Homes the user saved, kept on the account so they follow the user to any device.
+    savedProperties: {
+        type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Property' }],
+        default: []
+    },
 }, { timestamps: true });
 
 // Hash password before saving

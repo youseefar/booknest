@@ -1,8 +1,34 @@
 const Booking = require('../models/Booking');
 const Property = require('../models/Property');
 const { isVerifiedPaystackTransaction } = require('./paystack');
+const { notifyUser } = require('./notifications');
 
 const idOf = value => value?._id || value;
+
+// Tells the student and the landlord about a newly recorded payment. It never throws.
+async function announcePayment(booking) {
+    try {
+        const property = await Property.findById(idOf(booking.propertyId)).select('title landlordId');
+        if (!property) return;
+        const baseUrl = process.env.APP_URL || '';
+        await Promise.all([
+            notifyUser(idOf(booking.studentId), {
+                category: 'booking',
+                title: 'Payment received',
+                body: `Your payment for "${property.title}" was confirmed and the home is secured for you.`,
+                link: '/my-bookings'
+            }, { email: true, baseUrl }),
+            notifyUser(property.landlordId, {
+                category: 'booking',
+                title: 'A booking was paid',
+                body: `A student paid for "${property.title}".`,
+                link: '/bookings'
+            }, { email: true, baseUrl })
+        ]);
+    } catch (error) {
+        console.error('Payment notification failed:', { name: error.name });
+    }
+}
 
 // Atomically claims the property for a booking whose payment Paystack has confirmed.
 // It succeeds only if the property is still available and is either reserved for this
@@ -90,7 +116,10 @@ async function recordVerifiedPayment(booking, reference, transaction) {
             }
         }
     );
-    if (update.modifiedCount === 1) return true;
+    if (update.modifiedCount === 1) {
+        await announcePayment(booking);
+        return true;
+    }
 
     if (await isPaidWithReference(booking._id, reference)) return true;
 

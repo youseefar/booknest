@@ -14,6 +14,7 @@ const {
 const { featuredUntilFromDays } = require('../services/listing-promotion');
 const { recordAudit } = require('../services/audit-log');
 const AuditLog = require('../models/AuditLog');
+const { notifyUser } = require('../services/notifications');
 
 const router = express.Router();
 
@@ -112,6 +113,17 @@ router.post('/admin/properties/:id/verification', requireRole('admin'), async (r
         return res.status(409).send('This property has an active payment and cannot be changed until checkout finishes.');
     }
     await recordAudit(req, 'property.verification', { targetType: 'property', targetId: property._id, details: `status=${req.body.status}` });
+    if (['verified', 'rejected'].includes(req.body.status)) {
+        const approved = req.body.status === 'verified';
+        await notifyUser(property.landlordId, {
+            category: 'listing',
+            title: approved ? 'Your listing was approved' : 'Your listing was not approved',
+            body: approved
+                ? `"${property.title}" is now visible to everyone on Jacob Estate.`
+                : `"${property.title}" was not approved. Open your dashboard to review it and update the listing.`,
+            link: '/dashboard'
+        }, { email: true, baseUrl: process.env.APP_URL || '' });
+    }
     res.redirect('/admin');
 });
 

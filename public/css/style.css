@@ -3820,3 +3820,8 @@ html[data-theme="dark"] .live-suggest-item, html[data-theme="dark"] .live-sugges
 html[data-theme="dark"] .live-suggest-meta, html[data-theme="dark"] .live-suggest-empty { color: #a9bfcc; }
 html[data-theme="dark"] .live-suggest-item:hover, html[data-theme="dark"] .live-suggest-item[aria-selected="true"], html[data-theme="dark"] .live-suggest-all:hover { background: rgba(255, 255, 255, .08); }
 @media (prefers-reduced-motion: reduce) { .is-updating { transition: none; } }
+
+/* Notification bell and list */
+.nav-bell { position: relative; }
+.nav-bell-count { position: absolute; top: 0; right: -4px; min-width: 18px; padding: 0 5px; border-radius: 9px; background: #dc3545; color: #fff; font-size: 11px; line-height: 18px; text-align: center; font-weight: 700; }
+.notification-item.is-unread { border-left: 4px solid #198754; }

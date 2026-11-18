@@ -17,6 +17,10 @@ const { requirePayoutSetup } = require('./middleware/payout-setup');
 const paymentRoutes = require('./routes/payments');
 const legalRoutes = require('./routes/legal');
 const propertyInquiryRoutes = require('./routes/property-inquiry');
+const notificationRoutes = require('./routes/notifications');
+const savedPropertiesApiRoutes = require('./routes/saved-properties-api');
+const listingReportRoutes = require('./routes/listing-reports');
+const attachUnreadNotifications = require('./middleware/notifications');
 const User = require('./models/User');
 const bcryptjs = require('bcryptjs');
 const validateRequestBody = require('./middleware/validate-request-body');
@@ -230,6 +234,7 @@ app.use((req, res, next) => {
   return passportSession(req, res, next);
 });
 app.use(requirePayoutSetup);
+app.use(attachUnreadNotifications);
 app.use('/', authRoutes);
 app.use('/', googleAuthRoutes);
 app.use('/', propertyRoutes);
@@ -238,6 +243,9 @@ app.use('/', adminRoutes);
 app.use('/', paymentRoutes);
 app.use('/', legalRoutes);
 app.use('/', propertyInquiryRoutes);
+app.use('/', notificationRoutes);
+app.use('/', savedPropertiesApiRoutes);
+app.use('/', listingReportRoutes);
 
 // Home page
 app.get('/', async (req, res, next) => {

@@ -13,14 +13,14 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 
-<body class="bg-soft">
+<body class="bg-soft"<%- user ? ' data-signed-in="true"' : '' %>>
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top shadow-sm">
         <div class="container">
             <a class="navbar-brand brand fw-bold" href="/" aria-label="Jacob Estate home"><img class="brand-logo" src="/jacobrent-mark.svg" alt="Jacob Estate mark">Jacob Estate</a>
             <div class="d-flex gap-3 align-items-center">
                 <a class="nav-link text-dark" href="/properties"><i class="bi bi-building me-1"></i>Properties</a>
                 <% if (user) { %>
-                    <a class="nav-link text-dark" href="/dashboard"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>
+                    <a class="nav-link text-dark" href="/dashboard"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a><%- include('partials/notification-link') %>
                     <a class="nav-link text-dark" href="/profile"><i class="bi bi-person-circle me-1"></i>Profile</a>
                     <a class="nav-link text-dark" href="/saved-properties" data-saved-properties-link>Saved homes</a>
                     <a class="nav-link text-dark" href="/logout"><i class="bi bi-box-arrow-right me-1"></i>Logout</a>
@@ -132,6 +132,35 @@
                 </div>
             </div>
         </div>
+
+        <% if (user && String(property.landlordId?._id || property.landlordId) !== String(user._id)) { %>
+        <section class="mt-5" id="report-listing" aria-labelledby="report-heading">
+            <h2 id="report-heading" class="h5 fw-bold">Something wrong with this listing?</h2>
+            <% const reportState = typeof reportResult === 'undefined' ? '' : reportResult; %>
+            <% if (reportState === 'submitted') { %><div class="alert alert-success" role="status">Thank you. Our team will review your report.</div><% } %>
+            <% if (reportState === 'exists') { %><div class="alert alert-info" role="status">You already have an open report on this listing.</div><% } %>
+            <% if (reportState === 'invalid') { %><div class="alert alert-warning" role="status">Choose a reason. If you choose Other, please add a few words of detail.</div><% } %>
+            <% if (reportState === 'limit') { %><div class="alert alert-info" role="status">You have sent several reports today. Please try again tomorrow.</div><% } %>
+            <details class="glass-card p-3">
+                <summary class="fw-semibold">Report this listing</summary>
+                <form method="POST" action="/property/<%= property._id %>/report" class="mt-3">
+                    <label class="form-label" for="report-reason">Reason</label>
+                    <select class="form-select mb-2" id="report-reason" name="reason" required>
+                        <option value="">Choose a reason</option>
+                        <option value="scam">Looks like a scam</option>
+                        <option value="wrong_info">Wrong price, place or details</option>
+                        <option value="unavailable">No longer available</option>
+                        <option value="not_real">Video does not match the home</option>
+                        <option value="inappropriate">Inappropriate content</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <label class="form-label" for="report-details">Details <span class="text-muted">(optional, up to 500 characters)</span></label>
+                    <textarea class="form-control mb-2" id="report-details" name="details" rows="3" maxlength="500"></textarea>
+                    <button class="btn btn-outline-danger" type="submit"><i class="bi bi-flag me-2"></i>Send report</button>
+                </form>
+            </details>
+        </section>
+        <% } %>
 
         <% if (property.listingType === 'rent') { %>
         <section class="property-reviews mt-5" aria-labelledby="reviews-heading">

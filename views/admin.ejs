@@ -15,14 +15,14 @@
     <div class="container">
         <a class="navbar-brand brand fw-bold" href="/" aria-label="Jacob Estate home"><img class="brand-logo" src="/jacobrent-mark.svg" alt="Jacob Estate mark">Jacob Estate</a>
         <div class="d-flex gap-3 align-items-center">
-            <a class="nav-link text-dark" href="/dashboard"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>
+            <a class="nav-link text-dark" href="/dashboard"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a><%- include('partials/notification-link') %>
             <a class="nav-link text-dark" href="/profile"><i class="bi bi-person-circle me-1"></i>Profile</a>
             <a class="nav-link text-dark" href="/logout"><i class="bi bi-box-arrow-right me-1"></i>Logout</a>
         </div>
     </div>
 </nav>
 <main class="container admin-console py-5">
-    <p class="text-end mb-2"><a class="text-link" href="/admin/audit-log"><i class="bi bi-journal-text me-1"></i>Audit log</a></p>
+    <p class="text-end mb-2"><a class="text-link me-3" href="/admin/reports"><i class="bi bi-flag me-1"></i>Listing reports</a><a class="text-link" href="/admin/audit-log"><i class="bi bi-journal-text me-1"></i>Audit log</a></p>
     <div class="admin-page-heading mb-4">
         <div>
             <span class="eyebrow text-uppercase">Admin console</span>

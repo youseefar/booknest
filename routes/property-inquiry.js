@@ -4,6 +4,7 @@ const Property = require('../models/Property');
 const PropertyInquiry = require('../models/PropertyInquiry');
 const { requireRole } = require('../middleware/auth');
 const { isEmailConfigured, sendEmail } = require('../services/email');
+const { notifyUser } = require('../services/notifications');
 
 const router = express.Router();
 
@@ -52,6 +53,12 @@ router.post('/property/:id/inquiries', requireRole('student'), async (req, res, 
         } else {
             console.warn('Seller inquiry email not sent: email service is not configured.');
         }
+        await notifyUser(property.landlordId._id, {
+            category: 'inquiry',
+            title: 'New property inquiry',
+            body: `${req.user.name} is interested in "${property.title}".`,
+            link: '/sales-inquiries'
+        });
         return res.redirect(`/property/${property._id}?inquiry=submitted`);
     } catch (error) {
         if (error.code === 11000) return res.redirect(`/property/${req.params.id}?inquiry=exists`);
@@ -88,13 +95,22 @@ router.post('/sales-inquiries/:id/status', requireRole('landlord'), async (req, 
     if (!allowedStatuses.includes(req.body.status)) return res.status(400).send('Invalid inquiry status.');
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Inquiry not found.');
 
-    const inquiry = await PropertyInquiry.findById(req.params.id).populate('propertyId', 'landlordId');
+    const inquiry = await PropertyInquiry.findById(req.params.id).populate('propertyId', 'landlordId title');
     if (!inquiry || !inquiry.propertyId || String(inquiry.propertyId.landlordId) !== String(req.user._id)) {
         return res.status(404).send('Inquiry not found.');
     }
 
     inquiry.status = req.body.status;
     await inquiry.save();
+    if (req.body.status !== 'pending') {
+        const wording = { viewed: 'viewed your inquiry', contacted: 'marked your inquiry as contacted', rejected: 'declined your inquiry' };
+        await notifyUser(inquiry.buyerId, {
+            category: 'inquiry',
+            title: 'Update on your inquiry',
+            body: `The seller ${wording[req.body.status]} about "${inquiry.propertyId.title}".`,
+            link: '/my-property-inquiries'
+        }, { email: true, baseUrl: process.env.APP_URL || '' });
+    }
     return res.redirect('/sales-inquiries');
 });
 

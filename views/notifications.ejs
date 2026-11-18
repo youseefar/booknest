@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/svg+xml" href="/jacobrent-mark.svg">
+    <title>Notifications - Jacob Estate</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="/js/theme.js"></script>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="bg-soft">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand brand fw-bold" href="/" aria-label="Jacob Estate home"><img class="brand-logo" src="/jacobrent-mark.svg" alt="Jacob Estate mark">Jacob Estate</a>
+            <div class="d-flex gap-3 align-items-center">
+                <a class="nav-link text-dark" href="/properties">Browse homes</a>
+                <a class="nav-link text-dark" href="/dashboard"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>
+                <%- include('partials/notification-link') %>
+            </div>
+        </div>
+    </nav>
+    <main class="container py-4">
+        <h1 class="h3 fw-bold mb-1">Notifications</h1>
+        <p class="text-muted">Your 50 most recent updates. Important ones are also sent to your email when email is set up.</p>
+        <% if (!notifications.length) { %>
+            <div class="alert alert-info" role="status">Nothing here yet. Updates about payments, listings and inquiries will appear here.</div>
+        <% } else { %>
+            <ul class="list-unstyled d-grid gap-2">
+                <% notifications.forEach(item => { %>
+                    <li class="glass-card p-3 notification-item<%= item.readAt ? '' : ' is-unread' %>">
+                        <div class="d-flex justify-content-between gap-3 flex-wrap">
+                            <strong><%= item.title %></strong>
+                            <time class="small text-muted" datetime="<%= item.createdAt.toISOString() %>"><%= item.createdAt.toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' }) %></time>
+                        </div>
+                        <% if (item.body) { %><p class="mb-1"><%= item.body %></p><% } %>
+                        <% if (item.link) { %><a class="small" href="<%= item.link %>">Open</a><% } %>
+                    </li>
+                <% }); %>
+            </ul>
+        <% } %>
+    </main>
+    <%- include('partials/legal-footer') %>
+</body>
+</html>
