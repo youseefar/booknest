@@ -258,6 +258,13 @@ router.post('/profile', requireAuth, async (req, res, next) => {
     const phoneValue = String(req.body.phone || '').trim();
     if (nameValue.length < 2 || !emailValue.includes('@')) return res.status(400).render('profile', { user: req.user, message: 'Enter a valid name and email address.' });
 
+    // Email is how password resets reach an account, so changing it needs the current password
+    // (Google-linked accounts have no password they know and are exempt).
+    if (emailValue !== req.user.email && !req.user.googleId) {
+      const passwordMatches = await bcryptjs.compare(String(req.body.currentPassword || ''), req.user.password);
+      if (!passwordMatches) return res.status(400).render('profile', { user: req.user, message: 'Enter your current password to change your email address.' });
+    }
+
     const existingUser = await User.findOne({ email: emailValue, _id: { $ne: req.user._id } });
     if (existingUser) return res.status(400).render('profile', { user: req.user, message: 'That email is already in use.' });
 

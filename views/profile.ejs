@@ -41,6 +41,10 @@
                             <input id="email" type="email" name="email" class="form-control" value="<%= user.email %>" required>
                         </div>
                         <div class="col-12">
+                            <label class="form-label" for="current-password-email">Current password <span class="text-muted">(only needed if you change your email)</span></label>
+                            <input id="current-password-email" type="password" name="currentPassword" class="form-control" autocomplete="current-password">
+                        </div>
+                        <div class="col-12">
                             <label class="form-label" for="phone">Phone number</label>
                             <input id="phone" type="tel" name="phone" class="form-control" value="<%= user.phone || '' %>" placeholder="Your contact number">
                         </div>
