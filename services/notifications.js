@@ -31,7 +31,7 @@ async function notifyUser(userId, { category, title, body = '', link = '' }, { e
                     to: user.email,
                     subject: `${details.title} - Jacob Estate`,
                     text: buildEmailText({ name: user.name, body: details.body || details.title, link: details.link, baseUrl })
-                }).catch(error => console.error('Notification email failed:', { name: error.name, code: error.code }));
+                }).catch(error => console.error('Notification email failed:', { name: error.name, code: error.code, reason: error.reason }));
             }
         }
     } catch (error) {

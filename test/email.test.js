@@ -82,3 +82,30 @@ test('sendEmail returns a sanitized error when SMTP delivery fails', async () =>
         && error.status === 503
         && !error.message.includes('private detail'));
 });
+
+test('Brevo is used over HTTPS when its key and sender are set, without leaking details on failure', async () => {
+    const saved = { key: process.env.BREVO_API_KEY, from: process.env.EMAIL_FROM };
+    process.env.BREVO_API_KEY = 'xkeysib-test';
+    process.env.EMAIL_FROM = 'sender@example.com';
+    try {
+        assert.equal(isEmailConfigured({ BREVO_API_KEY: 'k', EMAIL_FROM: 'a@b.co' }), true);
+        assert.equal(isEmailConfigured({ BREVO_API_KEY: 'k' }), false);
+        let request;
+        await sendEmail({ to: 'buyer@example.com', subject: 'Hi', text: 'Body' }, {
+            fetch: async (url, options) => { request = { url, options }; return { ok: true, status: 201 }; }
+        });
+        assert.equal(request.url, 'https://api.brevo.com/v3/smtp/email');
+        assert.equal(request.options.headers['api-key'], 'xkeysib-test');
+        const body = JSON.parse(request.options.body);
+        assert.deepEqual(body.to, [{ email: 'buyer@example.com' }]);
+        assert.equal(body.sender.email, 'sender@example.com');
+        assert.equal(body.textContent, 'Body');
+
+        await assert.rejects(sendEmail({ to: 'buyer@example.com', subject: 'Hi', text: 'Body' }, {
+            fetch: async () => ({ ok: false, status: 401 })
+        }), error => error.code === 'EMAIL_DELIVERY_FAILED' && error.reason === 'HTTP_401' && !error.message.includes('xkeysib'));
+    } finally {
+        if (saved.key === undefined) delete process.env.BREVO_API_KEY; else process.env.BREVO_API_KEY = saved.key;
+        if (saved.from === undefined) delete process.env.EMAIL_FROM; else process.env.EMAIL_FROM = saved.from;
+    }
+});

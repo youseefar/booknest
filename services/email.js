@@ -1,7 +1,15 @@
 const nodemailer = require('nodemailer');
 
+// Hosts such as Render's free plan block outgoing SMTP, so mail can also go over HTTPS through Brevo
+// (BREVO_API_KEY plus EMAIL_FROM, a sender address verified in Brevo). Gmail SMTP remains the fallback.
+const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email';
+
+function isBrevoConfigured(environment = process.env) {
+    return Boolean(environment.BREVO_API_KEY && environment.EMAIL_FROM);
+}
+
 function isEmailConfigured(environment = process.env) {
-    return Boolean(environment.SMTP_USER && environment.SMTP_APP_PASSWORD);
+    return isBrevoConfigured(environment) || Boolean(environment.SMTP_USER && environment.SMTP_APP_PASSWORD);
 }
 
 function createTransport(environment = process.env, mailer = nodemailer) {
@@ -26,7 +34,38 @@ function createTransport(environment = process.env, mailer = nodemailer) {
     });
 }
 
+async function sendViaBrevo({ to, subject, text }, fetchImpl, environment) {
+    const response = await fetchImpl(BREVO_ENDPOINT, {
+        method: 'POST',
+        headers: { 'api-key': environment.BREVO_API_KEY, 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({
+            sender: { name: 'Jacob Estate', email: environment.EMAIL_FROM },
+            to: [{ email: to }],
+            subject,
+            textContent: text
+        }),
+        signal: AbortSignal.timeout(15000)
+    });
+    if (!response.ok) {
+        const failure = new Error('Brevo rejected the message.');
+        failure.code = `HTTP_${response.status}`;
+        throw failure;
+    }
+}
+
 async function sendEmail({ to, subject, text }, dependencies = {}) {
+    if (!dependencies.createTransport && isBrevoConfigured()) {
+        try {
+            await sendViaBrevo({ to, subject, text }, dependencies.fetch || fetch, process.env);
+            return;
+        } catch (cause) {
+            const error = new Error('Email delivery is temporarily unavailable.');
+            error.code = 'EMAIL_DELIVERY_FAILED';
+            error.reason = cause.code || cause.name;
+            error.status = 503;
+            throw error;
+        }
+    }
     const createSmtpTransport = dependencies.createTransport || createTransport;
     let transport;
     try {
@@ -42,6 +81,7 @@ async function sendEmail({ to, subject, text }, dependencies = {}) {
 
         const error = new Error('Email delivery is temporarily unavailable.');
         error.code = 'EMAIL_DELIVERY_FAILED';
+        error.reason = cause.code || cause.responseCode || cause.name;
         error.status = 503;
         throw error;
     } finally {
@@ -49,4 +89,4 @@ async function sendEmail({ to, subject, text }, dependencies = {}) {
     }
 }
 
-module.exports = { createTransport, isEmailConfigured, sendEmail };
+module.exports = { createTransport, isBrevoConfigured, isEmailConfigured, sendEmail };
