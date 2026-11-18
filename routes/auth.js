@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const passport = require('passport');
 const bcryptjs = require('bcryptjs');
 const User = require('../models/User');
+const { renderEmail } = require('../services/email-template');
 const Property = require('../models/Property');
 const Booking = require('../models/Booking');
 const PropertyInquiry = require('../models/PropertyInquiry');
@@ -166,17 +167,20 @@ router.post('/forgot-password', async (req, res, next) => {
         }
         const resetUrl = new URL(`/reset-password/${rawToken}`, process.env.APP_URL).toString();
         try {
+          const email = renderEmail({
+            preheader: 'Use the button within 30 minutes to choose a new password.',
+            icon: '\u{1F510}',
+            heading: 'Reset your password',
+            greeting: `Hello ${user.name},`,
+            paragraphs: ['We received a request to reset your Jacob Estate password. Use the button below to choose a new one. The link works for 30 minutes.'],
+            button: { label: 'Reset my password', url: resetUrl },
+            note: 'If you did not ask for this, you can safely ignore this email. Your password will not change.'
+          });
           await sendEmail({
             to: user.email,
             subject: 'Reset your Jacob Estate password',
-            text: [
-              `Hello ${user.name},`,
-              '',
-              'We received a request to reset your Jacob Estate password.',
-              `Use this link within 30 minutes: ${resetUrl}`,
-              '',
-              'If you did not request this, you can ignore this email.'
-            ].join('\n')
+            text: email.text,
+            html: email.html
           });
         } catch (emailError) {
           console.error('Password reset email failed:', {

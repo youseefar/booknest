@@ -34,7 +34,7 @@ function createTransport(environment = process.env, mailer = nodemailer) {
     });
 }
 
-async function sendViaBrevo({ to, subject, text }, fetchImpl, environment) {
+async function sendViaBrevo({ to, subject, text, html }, fetchImpl, environment) {
     const response = await fetchImpl(BREVO_ENDPOINT, {
         method: 'POST',
         headers: { 'api-key': environment.BREVO_API_KEY, 'content-type': 'application/json', accept: 'application/json' },
@@ -42,7 +42,8 @@ async function sendViaBrevo({ to, subject, text }, fetchImpl, environment) {
             sender: { name: 'Jacob Estate', email: environment.EMAIL_FROM },
             to: [{ email: to }],
             subject,
-            textContent: text
+            textContent: text,
+            ...(html ? { htmlContent: html } : {})
         }),
         signal: AbortSignal.timeout(15000)
     });
@@ -53,10 +54,10 @@ async function sendViaBrevo({ to, subject, text }, fetchImpl, environment) {
     }
 }
 
-async function sendEmail({ to, subject, text }, dependencies = {}) {
+async function sendEmail({ to, subject, text, html }, dependencies = {}) {
     if (!dependencies.createTransport && isBrevoConfigured()) {
         try {
-            await sendViaBrevo({ to, subject, text }, dependencies.fetch || fetch, process.env);
+            await sendViaBrevo({ to, subject, text, html }, dependencies.fetch || fetch, process.env);
             return;
         } catch (cause) {
             const error = new Error('Email delivery is temporarily unavailable.');
@@ -74,7 +75,8 @@ async function sendEmail({ to, subject, text }, dependencies = {}) {
             from: `Jacob Estate <${process.env.SMTP_USER}>`,
             to,
             subject,
-            text
+            text,
+            ...(html ? { html } : {})
         });
     } catch (cause) {
         if (cause.code === 'EMAIL_NOT_CONFIGURED') throw cause;

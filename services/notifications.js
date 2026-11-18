@@ -2,6 +2,23 @@ const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { isEmailConfigured, sendEmail } = require('./email');
 const { CATEGORIES, buildEmailText, cleanText, safeInternalLink } = require('./notification-text');
+const { renderEmail } = require('./email-template');
+
+const CATEGORY_ICONS = { booking: '\u{1F4C5}', listing: '\u{1F3E0}', inquiry: '\u{1F4AC}', report: '\u{1F6A9}' };
+
+function buildNotificationEmail(user, details, baseUrl) {
+    let url = '';
+    try { url = details.link && baseUrl ? new URL(details.link, baseUrl).toString() : ''; } catch (error) { url = ''; }
+    return renderEmail({
+        preheader: details.body || details.title,
+        icon: CATEGORY_ICONS[details.category],
+        heading: details.title,
+        greeting: `Hello ${cleanText(user.name, 100) || 'there'},`,
+        paragraphs: [details.body || details.title],
+        button: url ? { label: 'Open on Jacob Estate', url } : null,
+        note: 'You are receiving this because of activity on your Jacob Estate account.'
+    });
+}
 
 function baseUrlFor(req) {
     if (process.env.APP_URL) return process.env.APP_URL;
@@ -27,10 +44,12 @@ async function notifyUser(userId, { category, title, body = '', link = '' }, { e
         if (email && isEmailConfigured()) {
             const user = await User.findById(userId).select('name email');
             if (user?.email) {
+                const email = buildNotificationEmail(user, details, baseUrl);
                 sendEmail({
                     to: user.email,
                     subject: `${details.title} - Jacob Estate`,
-                    text: buildEmailText({ name: user.name, body: details.body || details.title, link: details.link, baseUrl })
+                    text: email.text,
+                    html: email.html
                 }).catch(error => console.error('Notification email failed:', { name: error.name, code: error.code, reason: error.reason }));
             }
         }
