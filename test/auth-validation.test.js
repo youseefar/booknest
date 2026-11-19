@@ -19,11 +19,13 @@ test('registration role input cannot grant the admin role', () => {
   assert.equal(getRegistrationRole({ role: 'admin' }), 'student');
 });
 
-test('isStrongPassword requires a minimum length and a number', () => {
+test('isStrongPassword requires length, a letter, a number and a special character', () => {
   assert.equal(isStrongPassword('short'), false);
   assert.equal(isStrongPassword('longpassword'), false);
   assert.equal(isStrongPassword('12345678'), false);
-  assert.equal(isStrongPassword('longpassword1'), true);
+  assert.equal(isStrongPassword('longpassword1'), false);
+  assert.equal(isStrongPassword('Longpassword1'), false);
+  assert.equal(isStrongPassword('longpassword1!'), true);
 });
 
 test('safe property redirects only allow a vetted property URL', () => {

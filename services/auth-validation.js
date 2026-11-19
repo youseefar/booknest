@@ -6,7 +6,7 @@ function normalizeEmail(value) {
 
 function isStrongPassword(value) {
     const password = String(value ?? '');
-    return password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password);
+    return password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
 }
 
 function getRegistrationRole(value) {

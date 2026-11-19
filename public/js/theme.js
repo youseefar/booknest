@@ -361,14 +361,15 @@
             label.id = `${input.id}-strength`;
             label.setAttribute('role', 'status');
             label.setAttribute('aria-live', 'polite');
-            label.textContent = 'Use 8+ characters and a number';
+            label.textContent = 'Use 8+ characters, a letter, a number and a special character';
 
             const rules = document.createElement('ul');
             rules.className = 'password-rules';
             const ruleChecks = [
                 ['At least 8 characters', value => value.length >= 8],
                 ['At least one letter', value => /[A-Za-z]/.test(value)],
-                ['At least one number', value => /\d/.test(value)]
+                ['At least one number', value => /\d/.test(value)],
+                ['At least one special character, e.g. ! @ # $', value => /[^A-Za-z0-9]/.test(value)]
             ].map(([text, test]) => {
                 const item = document.createElement('li');
                 item.textContent = text;
@@ -399,7 +400,7 @@
 
                 if (!value) {
                     strength.className = 'password-strength is-empty';
-                    label.textContent = 'Use 8+ characters and a number';
+                    label.textContent = 'Use 8+ characters, a letter, a number and a special character';
                     return;
                 }
 
@@ -412,7 +413,9 @@
                         ? 'Add at least one letter'
                         : !/\d/.test(value)
                             ? 'Add at least one number'
-                            : `${level[0].toUpperCase()}${level.slice(1)}`;
+                            : !/[^A-Za-z0-9]/.test(value)
+                                ? 'Add a special character, e.g. ! @ # $'
+                                : `${level[0].toUpperCase()}${level.slice(1)}`;
             });
         });
 
@@ -438,7 +441,8 @@
                 const matches = hasConfirmation && passwordInput.value === confirmInput.value;
                 const passwordIsValid = passwordInput.validity.valid
                     && /[A-Za-z]/.test(passwordInput.value)
-                    && /\d/.test(passwordInput.value);
+                    && /\d/.test(passwordInput.value)
+                    && /[^A-Za-z0-9]/.test(passwordInput.value);
 
                 if (!hasConfirmation) {
                     matchStatus.className = 'password-match is-empty';

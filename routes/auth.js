@@ -52,8 +52,8 @@ router.post('/register', async (req, res, next) => {
     if (nameValue.length < 2 || !emailValue.includes('@') || !isStrongPassword(password) || (role === 'landlord' && phoneValue.length < 7)) {
       return res.status(400).render(registrationView, {
         message: role === 'landlord'
-          ? 'Please provide a valid name, email, and a strong password with at least 8 characters and one number.'
-          : 'Please provide a valid name, email, and a strong password with at least 8 characters and one number.',
+          ? 'Please provide a valid name, email, and a strong password with at least 8 characters, a letter, a number and a special character.'
+          : 'Please provide a valid name, email, and a strong password with at least 8 characters, a letter, a number and a special character.',
         mode: role === 'landlord' ? 'landlord' : 'student',
         role,
         pageTitle: role === 'landlord' ? 'Property Owner Registration' : 'Register',
@@ -236,7 +236,7 @@ router.post('/reset-password/:token', async (req, res) => {
   const password = String(req.body.password || '');
   const confirmPassword = String(req.body.confirmPassword || '');
   if (!isStrongPassword(password) || password !== confirmPassword) {
-    return res.status(400).render('reset-password', { token: req.params.token, message: password !== confirmPassword ? 'Passwords do not match.' : 'Password must be at least 8 characters and include a number.' });
+    return res.status(400).render('reset-password', { token: req.params.token, message: password !== confirmPassword ? 'Passwords do not match.' : 'Password must be at least 8 characters and include a letter, a number and a special character.' });
   }
 
   const tokenHash = crypto.createHash('sha256').update(req.params.token).digest('hex');
@@ -288,7 +288,7 @@ router.post('/profile/password', requireAuth, async (req, res) => {
   const { currentPassword, newPassword, confirmPassword } = req.body;
   const passwordMatches = await bcryptjs.compare(String(currentPassword || ''), req.user.password);
   if (!passwordMatches || !isStrongPassword(newPassword) || newPassword !== confirmPassword) {
-    return res.status(400).render('profile', { user: req.user, message: !passwordMatches ? 'Current password is incorrect.' : newPassword !== confirmPassword ? 'New passwords do not match.' : 'New password must be at least 8 characters and include a number.' });
+    return res.status(400).render('profile', { user: req.user, message: !passwordMatches ? 'Current password is incorrect.' : newPassword !== confirmPassword ? 'New passwords do not match.' : 'New password must be at least 8 characters and include a letter, a number and a special character.' });
   }
 
   req.user.password = newPassword;
