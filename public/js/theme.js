@@ -363,7 +363,23 @@
             label.setAttribute('aria-live', 'polite');
             label.textContent = 'Use 8+ characters and a number';
 
-            strength.append(bars, label);
+            const rules = document.createElement('ul');
+            rules.className = 'password-rules';
+            const ruleChecks = [
+                ['At least 8 characters', value => value.length >= 8],
+                ['At least one letter', value => /[A-Za-z]/.test(value)],
+                ['At least one number', value => /\d/.test(value)]
+            ].map(([text, test]) => {
+                const item = document.createElement('li');
+                item.textContent = text;
+                rules.append(item);
+                return { item, test };
+            });
+            const updateRules = value => ruleChecks.forEach(({ item, test }) => {
+                item.className = test(value) ? 'is-met' : '';
+            });
+
+            strength.append(bars, label, rules);
             const passwordField = input.closest('.password-field');
             (passwordField || input).insertAdjacentElement('afterend', strength);
 
@@ -372,6 +388,7 @@
 
             input.addEventListener('input', () => {
                 const value = input.value;
+                updateRules(value);
                 const score = [
                     value.length >= 8,
                     value.length >= 12,

@@ -280,6 +280,21 @@ html[data-theme="dark"] .password-toggle {
     line-height: 1.3;
 }
 
+.password-rules {
+    display: grid;
+    gap: 0.15rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.75rem;
+    color: #b42318;
+}
+
+.password-rules li::before { content: "\2715\00a0\00a0"; }
+.password-strength.is-empty .password-rules { color: #64748b; }
+.password-rules li.is-met { color: #157347; }
+.password-rules li.is-met::before { content: "\2713\00a0\00a0"; }
+
 .password-strength.is-weak .password-strength-label { color: #b42318; }
 .password-strength.is-fair .password-strength-label { color: #9a5b13; }
 .password-strength.is-good .password-strength-label { color: #236d60; }
